@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 忘却曲線単語帳
 
-## Getting Started
+忘却曲線を用いた今までにない単語帳アプリ。自動で自分用の忘却曲線に沿った単語帳を作成して忘れる前に出題してくれます。記憶に定着しやすい学習方法を提供します。
 
-First, run the development server:
+## 機能
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- ユーザー認証（ログイン/サインアップ）
+- ダッシュボード（単語帳一覧と暗記学習）
+- 単語帳の作成と管理
+- 単語の追加と編集
+- 忘却曲線に基づいた暗記テスト
+
+## 技術スタック
+
+- Next.js
+- TypeScript
+- Tailwind CSS
+- Supabase (認証・データベース)
+
+## セットアップ
+
+1. リポジトリをクローン
+2. 依存関係をインストール: `npm install`
+3. 環境変数を設定:
+   - `.env.local` ファイルを作成し、Supabaseの認証情報を追加
+
+```
+NEXT_PUBLIC_SUPABASE_URL=あなたのSupabase URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY=あなたのSupabase Anon Key
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. アプリケーションを起動: `npm run dev`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## データベース構造
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Supabaseに以下のテーブルが必要です：
 
-## Learn More
+### users テーブル
+- id (uuid, primary key)
+- email (text)
+- created_at (timestamp)
 
-To learn more about Next.js, take a look at the following resources:
+### wordbooks テーブル
+- id (uuid, primary key)
+- user_id (uuid, foreign key to users.id)
+- title (text)
+- created_at (timestamp)
+- last_studied_at (timestamp, nullable) - 最後に学習した日時
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### words テーブル
+- id (uuid, primary key)
+- wordbook_id (uuid, foreign key to wordbooks.id)
+- front (text) - 単語
+- back (text) - 意味
+- created_at (timestamp)
+- last_studied_at (timestamp, nullable) - 最後に学習した日時
+- next_review_at (timestamp, nullable) - 次回復習予定日時
+- level (integer, default 0) - 習熟度レベル
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## データベース更新（既存プロジェクト用）
 
-## Deploy on Vercel
+既存のプロジェクトを更新する場合は、以下の手順でデータベースを更新してください：
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. Supabase Studio にアクセス
+2. `wordbooks` テーブルに以下のカラムを追加:
+   - `last_studied_at` (timestamp, nullable)
+3. `words` テーブルに以下のカラムを追加:
+   - `last_studied_at` (timestamp, nullable)
+   - `next_review_at` (timestamp, nullable)
+   - `level` (integer, default 0)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## ライセンス
+
+MIT
