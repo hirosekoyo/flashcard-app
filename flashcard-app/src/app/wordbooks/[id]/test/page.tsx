@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 interface Word {
   id: string
@@ -10,15 +12,22 @@ interface Word {
   back: string
 }
 
+interface LearningProgress {
+  level: number
+}
+
 export default function TestPage({ params }: { params: { id: string } }) {
   const [words, setWords] = useState<Word[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showAnswer, setShowAnswer] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [isFlipped, setIsFlipped] = useState(false)
+  const [progresses, setProgresses] = useState<Record<string, number>>({})
   const router = useRouter()
 
   useEffect(() => {
     fetchWords()
+    fetchProgress()
   }, [params.id])
 
   const fetchWords = async () => {
@@ -38,30 +47,81 @@ export default function TestPage({ params }: { params: { id: string } }) {
     }
   }
 
-  const handleNext = async (status: '未学習' | '学習中' | '習得済み') => {
-    if (currentIndex < words.length - 1) {
-      setCurrentIndex(currentIndex + 1)
-      setShowAnswer(false)
-    } else {
-      router.push(`/wordbooks/${params.id}`)
-    }
-
+  const fetchProgress = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error('ユーザーが見つかりません')
-
-      const { error } = await supabase
+      if (!user) return
+      const { data, error } = await supabase
         .from('learning_progress')
-        .upsert({
-          user_id: user.id,
-          word_id: words[currentIndex].id,
-          status,
-          next_review_at: new Date().toISOString(),
-        })
-
+        .select('word_id, level')
+        .eq('user_id', user.id)
+        .in('word_id', words.map(w => w.id))
       if (error) throw error
-    } catch (error) {
-      console.error('Error updating progress:', error)
+      const map: Record<string, number> = {}
+      data?.forEach((row: any) => { map[row.word_id] = row.level })
+      setProgresses(map)
+    } catch (e) { }
+  }
+
+  const getNextReviewDate = (level: number) => {
+    const today = new Date()
+    let days = 1
+    switch (level) {
+      case 0: days = 1; break
+      case 1: days = 2; break
+      case 2: days = 3; break
+      case 3: days = 5; break
+      case 4: days = 7; break
+      case 5: days = 14; break
+      case 6: days = 30; break
+      case 7: days = 90; break
+      case 8: days = 180; break
+      case 9: days = 180; break
+      case 10: days = 180; break
+      default: days = 1
+    }
+    today.setDate(today.getDate() + days)
+    return today.toISOString().split('T')[0]
+  }
+
+  const handleRemember = async () => {
+    const word = words[currentIndex]
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const currentLevel = progresses[word.id] ?? 0
+    const newLevel = Math.min(currentLevel + 1, 10)
+    const nextReview = getNextReviewDate(newLevel)
+    const { error } = await supabase
+      .from('learning_progress')
+      .upsert({ user_id: user.id, word_id: word.id, level: newLevel, next_review_at: nextReview })
+    if (error) {
+      console.error('upsert error:', error)
+    }
+    setProgresses((prev) => ({ ...prev, [word.id]: newLevel }))
+    goNext()
+  }
+
+  const handleForget = async () => {
+    const word = words[currentIndex]
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const nextReview = getNextReviewDate(0)
+    const { error } = await supabase
+      .from('learning_progress')
+      .upsert({ user_id: user.id, word_id: word.id, level: 1, next_review_at: nextReview })
+    if (error) {
+      console.error('upsert error:', error)
+    }
+    setProgresses((prev) => ({ ...prev, [word.id]: 1 }))
+    goNext()
+  }
+
+  const goNext = () => {
+    setIsFlipped(false)
+    if (currentIndex < words.length - 1) {
+      setCurrentIndex(currentIndex + 1)
+    } else {
+      router.push(`/wordbooks/${params.id}`)
     }
   }
 
@@ -99,46 +159,41 @@ export default function TestPage({ params }: { params: { id: string } }) {
             {currentIndex + 1} / {words.length}
           </p>
         </div>
-
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold mb-4">{currentWord.front}</h2>
-            {showAnswer && (
-              <p className="text-xl text-gray-700 mb-8">{currentWord.back}</p>
-            )}
-          </div>
-
-          {!showAnswer ? (
-            <button
-              onClick={() => setShowAnswer(true)}
-              className="w-full py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              答えを見る
-            </button>
-          ) : (
-            <div className="grid grid-cols-3 gap-4">
-              <button
-                onClick={() => handleNext('未学習')}
-                className="py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-              >
-                未学習
-              </button>
-              <button
-                onClick={() => handleNext('学習中')}
-                className="py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
-              >
-                学習中
-              </button>
-              <button
-                onClick={() => handleNext('習得済み')}
-                className="py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-              >
-                習得済み
-              </button>
+        <div className="flex justify-center mb-8">
+          <div
+            className={`relative w-80 h-48 cursor-pointer perspective`}
+            onClick={() => setIsFlipped(f => !f)}
+          >
+            <div className={`absolute w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${isFlipped ? 'rotate-y-180' : ''}`}>
+              <Card className="absolute w-full h-full backface-hidden flex items-center justify-center text-2xl font-bold">
+                <CardContent className="flex items-center justify-center h-full text-2xl font-bold">
+                  {currentWord.front}
+                </CardContent>
+              </Card>
+              <Card className="absolute w-full h-full backface-hidden flex items-center justify-center text-2xl font-bold rotate-y-180">
+                <CardContent className="flex items-center justify-center h-full text-2xl font-bold">
+                  {currentWord.back}
+                </CardContent>
+              </Card>
             </div>
-          )}
+          </div>
+        </div>
+        <div className="flex justify-center gap-8">
+          <Button variant="destructive" size="lg" onClick={handleForget}>忘れた</Button>
+          <Button variant="default" size="lg" onClick={handleRemember}>覚えた</Button>
         </div>
       </div>
+      <style jsx>{`
+        .perspective {
+          perspective: 1000px;
+        }
+        .backface-hidden {
+          backface-visibility: hidden;
+        }
+        .rotate-y-180 {
+          transform: rotateY(180deg);
+        }
+      `}</style>
     </div>
   )
 } 
