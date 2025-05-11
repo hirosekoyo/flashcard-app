@@ -5,6 +5,19 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/Header'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader as DialogHeaderUI,
+  DialogTitle as DialogTitleUI,
+  DialogDescription,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 
 interface Word {
   id: string
@@ -25,11 +38,21 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editWords, setEditWords] = useState<{id?: string, front: string, back: string}[]>([])
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     fetchWordbook()
     fetchWords()
   }, [params.id])
+
+  useEffect(() => {
+    if (wordbook) setEditTitle(wordbook.title)
+    if (words) setEditWords(words.map(w => ({ id: w.id, front: w.front, back: w.back })))
+  }, [wordbook, words])
 
   const fetchWordbook = async () => {
     try {
@@ -65,20 +88,76 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
     }
   }
 
-  const handleDeleteWord = async (wordId: string) => {
-    if (!confirm('この単語を削除してもよろしいですか？')) return
-
+  const handleDeleteWord = async () => {
+    if (!deleteTargetId) return
     try {
       const { error } = await supabase
         .from('words')
         .delete()
-        .eq('id', wordId)
-
+        .eq('id', deleteTargetId)
       if (error) throw error
+      setDeleteDialogOpen(false)
+      setDeleteTargetId(null)
       fetchWords()
     } catch (error) {
       console.error('Error deleting word:', error)
       setError('単語の削除に失敗しました')
+    }
+  }
+
+  const handleWordChange = (idx: number, key: 'front' | 'back', value: string) => {
+    setEditWords((prev) => prev.map((w, i) => i === idx ? { ...w, [key]: value } : w))
+  }
+  const handleAddWord = () => setEditWords((prev) => [...prev, { front: '', back: '' }])
+  const handleRemoveWord = (idx: number) => setEditWords((prev) => prev.filter((_, i) => i !== idx))
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    try {
+      // タイトル更新
+      if (editTitle !== wordbook?.title) {
+        const { error: tError } = await supabase
+          .from('wordbooks')
+          .update({ title: editTitle })
+          .eq('id', params.id)
+        if (tError) throw tError
+      }
+      // 単語の更新
+      const existingIds = words.map(w => w.id)
+      const newWords = editWords.filter(w => !w.id && w.front && w.back)
+      const updatedWords = editWords.filter(w => w.id && (w.front !== words.find(ow => ow.id === w.id)?.front || w.back !== words.find(ow => ow.id === w.id)?.back))
+      const deletedIds = existingIds.filter(id => !editWords.find(w => w.id === id))
+      // 追加
+      if (newWords.length > 0) {
+        const { error: addError } = await supabase
+          .from('words')
+          .insert(newWords.map(w => ({ ...w, wordbook_id: params.id })))
+        if (addError) throw addError
+      }
+      // 更新
+      for (const w of updatedWords) {
+        const { error: upError } = await supabase
+          .from('words')
+          .update({ front: w.front, back: w.back })
+          .eq('id', w.id)
+        if (upError) throw upError
+      }
+      // 削除
+      if (deletedIds.length > 0) {
+        const { error: delError } = await supabase
+          .from('words')
+          .delete()
+          .in('id', deletedIds)
+        if (delError) throw delError
+      }
+      fetchWordbook()
+      fetchWords()
+    } catch (error: any) {
+      setError(error.message)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -109,7 +188,48 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header showBackButton backUrl="/dashboard" />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">単語帳編集</h1>
+        <form onSubmit={handleSave} className="space-y-6 mb-8">
+          <div>
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700">タイトル</label>
+            <Input
+              type="text"
+              id="title"
+              required
+              className="mt-1"
+              value={editTitle}
+              onChange={e => setEditTitle(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">単語リスト</label>
+            <div className="space-y-2">
+              {editWords.map((word, idx) => (
+                <div key={word.id || idx} className="flex gap-2 items-center">
+                  <Input
+                    type="text"
+                    placeholder="表面 (例: apple)"
+                    value={word.front}
+                    onChange={e => handleWordChange(idx, 'front', e.target.value)}
+                  />
+                  <Input
+                    type="text"
+                    placeholder="裏面 (例: りんご)"
+                    value={word.back}
+                    onChange={e => handleWordChange(idx, 'back', e.target.value)}
+                  />
+                  <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveWord(idx)} disabled={editWords.length === 1}>削除</Button>
+                </div>
+              ))}
+              <Button type="button" variant="secondary" size="sm" onClick={handleAddWord}>単語を追加</Button>
+            </div>
+          </div>
+          {error && <div className="text-red-500 text-sm text-center">{error}</div>}
+          <div className="flex justify-end space-x-4">
+            <Button type="submit" disabled={saving}>{saving ? '保存中...' : '保存'}</Button>
+          </div>
+        </form>
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -119,58 +239,52 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
               作成日: {new Date(wordbook?.created_at || '').toLocaleDateString()}
             </p>
           </div>
-          <div className="flex space-x-4">
-            <Link
-              href={`/wordbooks/${params.id}/test`}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-            >
-              テスト開始
+          <div className="flex space-x-2">
+            <Link href={`/wordbooks/${params.id}/test`}>
+              <Button variant="secondary">学習する</Button>
             </Link>
-            <Link
-              href={`/wordbooks/${params.id}/words/new`}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              単語を追加
+            <Link href={`/wordbooks/${params.id}/words/new`}>
+              <Button>追加</Button>
             </Link>
           </div>
         </div>
 
-        <div className="bg-white shadow overflow-hidden sm:rounded-md">
-          <ul className="divide-y divide-gray-200">
-            {words.map((word) => (
-              <li key={word.id}>
-                <div className="px-4 py-4 sm:px-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-lg font-medium text-gray-900 truncate">
-                        {word.front}
-                      </p>
-                      <p className="mt-1 text-sm text-gray-500">{word.back}</p>
-                    </div>
-                    <div className="ml-4 flex-shrink-0">
-                      <button
-                        onClick={() => handleDeleteWord(word.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        削除
-                      </button>
-                    </div>
+        <div className="space-y-4">
+          {words.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <p className="text-gray-500 mb-4">単語が登録されていません</p>
+                <Button type="button" onClick={handleAddWord}>単語を追加</Button>
+              </CardContent>
+            </Card>
+          ) : (
+            words.map((word) => (
+              <Card key={word.id}>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">{word.front}</CardTitle>
+                    <p className="text-gray-500 mt-1">{word.back}</p>
                   </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-
-          {words.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500">単語が登録されていません</p>
-              <Link
-                href={`/wordbooks/${params.id}/words/new`}
-                className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                単語を追加
-              </Link>
-            </div>
+                  <Dialog open={deleteDialogOpen && deleteTargetId === word.id} onOpenChange={(open) => { setDeleteDialogOpen(open); if (!open) setDeleteTargetId(null) }}>
+                    <DialogTrigger asChild>
+                      <Button variant="destructive" size="sm" onClick={() => { setDeleteDialogOpen(true); setDeleteTargetId(word.id) }}>削除</Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeaderUI>
+                        <DialogTitleUI>本当に削除しますか？</DialogTitleUI>
+                        <DialogDescription>この単語カードは元に戻せません。</DialogDescription>
+                      </DialogHeaderUI>
+                      <DialogFooter>
+                        <DialogClose asChild>
+                          <Button variant="secondary">キャンセル</Button>
+                        </DialogClose>
+                        <Button variant="destructive" onClick={handleDeleteWord}>削除</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </CardHeader>
+              </Card>
+            ))
           )}
         </div>
       </div>

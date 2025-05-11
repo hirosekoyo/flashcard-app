@@ -3,12 +3,23 @@
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 export default function NewWordbookPage() {
   const [title, setTitle] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+  const [words, setWords] = useState([{ front: '', back: '' }])
+
+  const handleWordChange = (idx: number, key: 'front' | 'back', value: string) => {
+    setWords((prev) => prev.map((w, i) => i === idx ? { ...w, [key]: value } : w))
+  }
+
+  const handleAddWord = () => setWords((prev) => [...prev, { front: '', back: '' }])
+
+  const handleRemoveWord = (idx: number) => setWords((prev) => prev.filter((_, i) => i !== idx))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -19,16 +30,23 @@ export default function NewWordbookPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('ユーザーが見つかりません')
 
-      const { error } = await supabase
+      const { data, error: wbError } = await supabase
         .from('wordbooks')
-        .insert([
-          {
-            title,
-            user_id: user.id,
-          },
-        ])
+        .insert([{ title, user_id: user.id }])
+        .select('id')
+        .single()
 
-      if (error) throw error
+      if (wbError) throw wbError
+
+      const validWords = words.filter(w => w.front && w.back)
+      if (validWords.length > 0) {
+        const { error: wError } = await supabase
+          .from('words')
+          .insert(validWords.map(w => ({ ...w, wordbook_id: data.id })))
+
+        if (wError) throw wError
+      }
+
       router.push('/dashboard')
     } catch (error: any) {
       setError(error.message)
@@ -52,14 +70,38 @@ export default function NewWordbookPage() {
             >
               タイトル
             </label>
-            <input
+            <Input
               type="text"
               id="title"
               required
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+              className="mt-1"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">単語リスト</label>
+            <div className="space-y-2">
+              {words.map((word, idx) => (
+                <div key={idx} className="flex gap-2 items-center">
+                  <Input
+                    type="text"
+                    placeholder="表面 (例: apple)"
+                    value={word.front}
+                    onChange={e => handleWordChange(idx, 'front', e.target.value)}
+                  />
+                  <Input
+                    type="text"
+                    placeholder="裏面 (例: りんご)"
+                    value={word.back}
+                    onChange={e => handleWordChange(idx, 'back', e.target.value)}
+                  />
+                  <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveWord(idx)} disabled={words.length === 1}>削除</Button>
+                </div>
+              ))}
+              <Button type="button" variant="secondary" size="sm" onClick={handleAddWord}>単語を追加</Button>
+            </div>
           </div>
 
           {error && (
@@ -67,20 +109,20 @@ export default function NewWordbookPage() {
           )}
 
           <div className="flex justify-end space-x-4">
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={() => router.push('/dashboard')}
-              className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              disabled={loading}
             >
               キャンセル
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
               {loading ? '作成中...' : '作成'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>

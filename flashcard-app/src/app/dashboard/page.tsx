@@ -4,6 +4,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 
 interface Wordbook {
   id: string
@@ -129,17 +132,12 @@ export default function DashboardPage() {
                 単語帳作成
               </Link>
             </nav>
-            <button
-              onClick={handleLogout}
-              className="inline-flex items-center px-3 py-1 border border-gray-300 text-sm leading-5 font-medium rounded-md text-gray-700 bg-white hover:text-gray-500 focus:outline-none focus:border-blue-300 focus:shadow-outline-blue active:text-gray-800 active:bg-gray-50 transition ease-in-out duration-150"
-            >
-              ログアウト
-            </button>
+            <Button variant="outline" onClick={handleLogout}>ログアウト</Button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">マイ単語帳</h1>
         </div>
@@ -148,36 +146,8 @@ export default function DashboardPage() {
         <div className="mb-8">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex">
-              <button
-                onClick={() => setActiveTab('wordbooks')}
-                className={`w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm ${
-                  activeTab === 'wordbooks'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <span className="inline-flex items-center justify-center">
-                  <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-                  </svg>
-                  単語帳
-                </span>
-              </button>
-              <button
-                onClick={() => setActiveTab('study')}
-                className={`w-1/2 py-4 px-1 text-center border-b-2 font-medium text-sm ${
-                  activeTab === 'study'
-                    ? 'border-indigo-500 text-indigo-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <span className="inline-flex items-center justify-center">
-                  <svg className="mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"></path>
-                  </svg>
-                  暗記
-                </span>
-              </button>
+              <Button variant={activeTab === 'wordbooks' ? 'default' : 'ghost'} className="w-1/2 rounded-none border-b-2" onClick={() => setActiveTab('wordbooks')}>単語帳</Button>
+              <Button variant={activeTab === 'study' ? 'default' : 'ghost'} className="w-1/2 rounded-none border-b-2" onClick={() => setActiveTab('study')}>暗記</Button>
             </nav>
           </div>
         </div>
@@ -187,51 +157,38 @@ export default function DashboardPage() {
             {/* 単語帳リスト */}
             <div className="grid grid-cols-1 gap-4">
               {wordbooks.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-gray-500">単語帳がありません</p>
-                  <Link
-                    href="/wordbooks/new"
-                    className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
-                  >
-                    新しい単語帳を作成
-                  </Link>
-                </div>
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <p className="text-gray-500 mb-4">単語帳がありません</p>
+                    <Link href="/wordbooks/new">
+                      <Button>新しい単語帳を作成</Button>
+                    </Link>
+                  </CardContent>
+                </Card>
               ) : (
                 <>
                   {/* 新規単語帳作成ボタン */}
-                  <Link
-                    href="/wordbooks/new"
-                    className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400 bg-white"
-                  >
-                    <div className="flex flex-col items-center text-center">
-                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                      </svg>
-                      <span className="mt-2 block text-sm font-medium text-gray-900">
-                        新しい単語帳を作成
-                      </span>
-                      <span className="block text-sm text-gray-500">
-                        作成する
-                      </span>
-                    </div>
+                  <Link href="/wordbooks/new">
+                    <Card className="hover:border-gray-400 cursor-pointer border-dashed border-2">
+                      <CardContent className="flex flex-col items-center text-center py-6">
+                        <svg className="mx-auto h-[1em] w-[1em] inline align-middle text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        <span className="mt-2 block text-sm font-medium text-gray-900">新しい単語帳を作成</span>
+                        <span className="block text-sm text-gray-500">作成する</span>
+                      </CardContent>
+                    </Card>
                   </Link>
-
                   {/* 単語帳リスト */}
                   {wordbooks.map((wordbook) => (
-                    <Link
-                      key={wordbook.id}
-                      href={`/wordbooks/${wordbook.id}`}
-                      className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200"
-                    >
-                      <h2 className="text-xl font-bold text-gray-900 mb-2">
-                        {wordbook.title}
-                      </h2>
-                      <p className="text-sm text-gray-500">
-                        {wordbook.card_count}枚のカード
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        作成日: {new Date(wordbook.created_at).toLocaleDateString()}
-                      </p>
+                    <Link key={wordbook.id} href={`/wordbooks/${wordbook.id}`}>
+                      <Card className="hover:shadow-md transition-shadow duration-200 cursor-pointer">
+                        <CardHeader>
+                          <CardTitle className="text-xl">{wordbook.title}</CardTitle>
+                          <CardDescription>{wordbook.card_count}枚のカード</CardDescription>
+                          <CardDescription>作成日: {new Date(wordbook.created_at).toLocaleDateString()}</CardDescription>
+                        </CardHeader>
+                      </Card>
                     </Link>
                   ))}
                 </>
@@ -248,110 +205,67 @@ export default function DashboardPage() {
             </div>
 
             {/* 単語帳選択リスト */}
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden mb-6">
-              {wordbooks.length === 0 ? (
-                <div className="p-4 text-center">
-                  <p className="text-gray-500">単語帳がありません</p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-200">
-                  {wordbooks.map((wordbook) => (
-                    <div key={wordbook.id} className="p-4 flex items-center">
-                      <input
-                        type="checkbox"
-                        id={`wordbook-${wordbook.id}`}
-                        checked={!!selectedWordbooks[wordbook.id]}
-                        onChange={() => toggleWordbook(wordbook.id)}
-                        className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                      />
-                      <label htmlFor={`wordbook-${wordbook.id}`} className="ml-3 block">
-                        <span className="text-sm font-medium text-gray-900">{wordbook.title}</span>
-                        <span className="text-sm text-gray-500 block">
-                          {wordbook.card_count}枚のカード
-                        </span>
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <Card className="mb-6">
+              <CardContent>
+                {wordbooks.length === 0 ? (
+                  <div className="p-4 text-center">
+                    <p className="text-gray-500">単語帳がありません</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-200">
+                    {wordbooks.map((wordbook) => (
+                      <div key={wordbook.id} className="p-4 flex items-center">
+                        <input
+                          type="checkbox"
+                          id={`wordbook-${wordbook.id}`}
+                          checked={!!selectedWordbooks[wordbook.id]}
+                          onChange={() => toggleWordbook(wordbook.id)}
+                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                        />
+                        <label htmlFor={`wordbook-${wordbook.id}`} className="ml-3 block">
+                          <span className="text-sm font-medium text-gray-900">{wordbook.title}</span>
+                          <span className="text-sm text-gray-500 block">
+                            {wordbook.card_count}枚のカード
+                          </span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* 学習設定 */}
-            <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-              <div className="mb-4">
-                <h3 className="text-lg font-medium text-gray-900">学習設定</h3>
-              </div>
-              <div className="space-y-4">
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="text-lg">学習設定</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm font-medium text-gray-900">表→裏表示</span>
                     <p className="text-sm text-gray-500">表面から裏面を当てる学習方法に切り替えます</p>
                   </div>
-                  <div className="relative inline-block w-10 align-middle select-none">
-                    <input
-                      type="checkbox"
-                      id="toggle-front-back"
-                      checked={studySettings.frontToBack}
-                      onChange={() => setStudySettings({...studySettings, frontToBack: !studySettings.frontToBack})}
-                      className="opacity-0 absolute h-0 w-0"
-                    />
-                    <label
-                      htmlFor="toggle-front-back"
-                      className={`block overflow-hidden h-6 rounded-full cursor-pointer transition-colors duration-200 ease-in-out ${
-                        studySettings.frontToBack ? 'bg-indigo-600' : 'bg-gray-200'
-                      }`}
-                    >
-                      <span
-                        className={`block h-6 w-6 rounded-full bg-white shadow transform transition-transform duration-200 ease-in-out ${
-                          studySettings.frontToBack ? 'translate-x-4' : 'translate-x-0'
-                        }`}
-                      ></span>
-                    </label>
-                  </div>
+                  <Switch checked={studySettings.frontToBack} onCheckedChange={() => setStudySettings({...studySettings, frontToBack: !studySettings.frontToBack})} />
                 </div>
-
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm font-medium text-gray-900">忘却曲線順</span>
                     <p className="text-sm text-gray-500">忘却曲線に沿った出題順にします</p>
                   </div>
-                  <div className="relative inline-block w-10 align-middle select-none">
-                    <input
-                      type="checkbox"
-                      id="toggle-spaced-repetition"
-                      checked={studySettings.useSpacedRepetition}
-                      onChange={() => setStudySettings({...studySettings, useSpacedRepetition: !studySettings.useSpacedRepetition})}
-                      className="opacity-0 absolute h-0 w-0"
-                    />
-                    <label
-                      htmlFor="toggle-spaced-repetition"
-                      className={`block overflow-hidden h-6 rounded-full cursor-pointer transition-colors duration-200 ease-in-out ${
-                        studySettings.useSpacedRepetition ? 'bg-indigo-600' : 'bg-gray-200'
-                      }`}
-                    >
-                      <span
-                        className={`block h-6 w-6 rounded-full bg-white shadow transform transition-transform duration-200 ease-in-out ${
-                          studySettings.useSpacedRepetition ? 'translate-x-4' : 'translate-x-0'
-                        }`}
-                      ></span>
-                    </label>
-                  </div>
+                  <Switch checked={studySettings.useSpacedRepetition} onCheckedChange={() => setStudySettings({...studySettings, useSpacedRepetition: !studySettings.useSpacedRepetition})} />
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* 学習開始ボタン */}
-            <button
+            <Button
               onClick={startStudy}
               disabled={Object.values(selectedWordbooks).filter(Boolean).length === 0}
-              className={`w-full py-3 px-4 text-white text-base font-medium rounded-md ${
-                Object.values(selectedWordbooks).filter(Boolean).length > 0
-                  ? 'bg-indigo-600 hover:bg-indigo-700'
-                  : 'bg-gray-300 cursor-not-allowed'
-              }`}
+              className="w-full text-base"
             >
               学習を開始する
-            </button>
+            </Button>
           </div>
         )}
       </main>
