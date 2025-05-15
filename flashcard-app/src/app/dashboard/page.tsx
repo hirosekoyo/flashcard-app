@@ -95,9 +95,9 @@ export default function DashboardPage() {
     const selectedIds = Object.entries(selectedWordbooks)
       .filter(([_, isSelected]) => isSelected)
       .map(([id]) => id)
-    
+
     if (selectedIds.length === 0) return
-    
+
     // 暗記テスト画面に遷移する処理
     // この部分は後ほど実装
     alert('暗記テストを開始します')
@@ -119,19 +119,11 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <svg className="h-8 w-8 text-indigo-600" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M24 44C35.0457 44 44 35.0457 44 24C44 12.9543 35.0457 4 24 4C12.9543 4 4 12.9543 4 24C4 35.0457 12.9543 44 24 44Z" fill="#6366F1" fillOpacity="0.15"/>
-                <path d="M24 36V12M24 12C20.6863 12 18 14.6863 18 18C18 21.3137 20.6863 24 24 24C27.3137 24 30 21.3137 30 18C30 14.6863 27.3137 12 24 12Z" stroke="#6366F1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M24 44C35.0457 44 44 35.0457 44 24C44 12.9543 35.0457 4 24 4C12.9543 4 4 12.9543 4 24C4 35.0457 12.9543 44 24 44Z" fill="#6366F1" fillOpacity="0.15" />
+                <path d="M24 36V12M24 12C20.6863 12 18 14.6863 18 18C18 21.3137 20.6863 24 24 24C27.3137 24 30 21.3137 30 18C30 14.6863 27.3137 12 24 12Z" stroke="#6366F1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               <span className="ml-2 text-xl font-bold">忘却曲線単語帳</span>
             </div>
-            <nav className="flex">
-              <Link href="/dashboard" className="px-3 py-2 text-sm font-medium text-indigo-600">
-                ダッシュボード
-              </Link>
-              <Link href="/wordbooks/new" className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700">
-                単語帳作成
-              </Link>
-            </nav>
             <Button variant="outline" onClick={handleLogout}>ログアウト</Button>
           </div>
         </div>
@@ -147,7 +139,7 @@ export default function DashboardPage() {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex">
               <Button variant={activeTab === 'wordbooks' ? 'default' : 'ghost'} className="w-1/2 rounded-none border-b-2" onClick={() => setActiveTab('wordbooks')}>単語帳</Button>
-              <Button variant={activeTab === 'study' ? 'default' : 'ghost'} className="w-1/2 rounded-none border-b-2" onClick={() => setActiveTab('study')}>暗記</Button>
+              <Button variant={activeTab === 'study' ? 'default' : 'ghost'} className="w-1/2 rounded-none border-b-2" onClick={() => setActiveTab('study')}>テスト</Button>
             </nav>
           </div>
         </div>
@@ -214,19 +206,21 @@ export default function DashboardPage() {
                 ) : (
                   <div className="divide-y divide-gray-200">
                     {wordbooks.map((wordbook) => (
-                      <div key={wordbook.id} className="p-4 flex items-center">
-                        <input
-                          type="checkbox"
-                          id={`wordbook-${wordbook.id}`}
-                          checked={!!selectedWordbooks[wordbook.id]}
-                          onChange={() => toggleWordbook(wordbook.id)}
-                          className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                        />
-                        <label htmlFor={`wordbook-${wordbook.id}`} className="ml-3 block">
-                          <span className="text-sm font-medium text-gray-900">{wordbook.title}</span>
-                          <span className="text-sm text-gray-500 block">
-                            {wordbook.card_count}枚のカード
-                          </span>
+                      <div key={wordbook.id} className="p-4">
+                        <label htmlFor={`wordbook-${wordbook.id}`} className="flex items-center cursor-pointer w-full">
+                          <input
+                            type="checkbox"
+                            id={`wordbook-${wordbook.id}`}
+                            checked={!!selectedWordbooks[wordbook.id]}
+                            onChange={() => toggleWordbook(wordbook.id)}
+                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                          />
+                          <div className="ml-3 block">
+                            <span className="text-sm font-medium text-gray-900">{wordbook.title}</span>
+                            <span className="text-sm text-gray-500 block">
+                              {wordbook.card_count}枚のカード
+                            </span>
+                          </div>
                         </label>
                       </div>
                     ))}
@@ -246,14 +240,14 @@ export default function DashboardPage() {
                     <span className="text-sm font-medium text-gray-900">表→裏表示</span>
                     <p className="text-sm text-gray-500">表面から裏面を当てる学習方法に切り替えます</p>
                   </div>
-                  <Switch checked={studySettings.frontToBack} onCheckedChange={() => setStudySettings({...studySettings, frontToBack: !studySettings.frontToBack})} />
+                  <Switch checked={studySettings.frontToBack} onCheckedChange={() => setStudySettings({ ...studySettings, frontToBack: !studySettings.frontToBack })} />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm font-medium text-gray-900">忘却曲線順</span>
                     <p className="text-sm text-gray-500">忘却曲線に沿った出題順にします</p>
                   </div>
-                  <Switch checked={studySettings.useSpacedRepetition} onCheckedChange={() => setStudySettings({...studySettings, useSpacedRepetition: !studySettings.useSpacedRepetition})} />
+                  <Switch checked={studySettings.useSpacedRepetition} onCheckedChange={() => setStudySettings({ ...studySettings, useSpacedRepetition: !studySettings.useSpacedRepetition })} />
                 </div>
               </CardContent>
             </Card>

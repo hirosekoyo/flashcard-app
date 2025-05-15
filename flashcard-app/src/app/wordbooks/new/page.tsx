@@ -59,7 +59,7 @@ export default function NewWordbookPage() {
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md mx-auto">
         <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">
-          新しい単語帳を作成
+          新規作成
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -68,7 +68,7 @@ export default function NewWordbookPage() {
               htmlFor="title"
               className="block text-sm font-medium text-gray-700"
             >
-              タイトル
+              新しい単語帳のタイトル
             </label>
             <Input
               type="text"

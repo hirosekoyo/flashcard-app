@@ -41,8 +41,9 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
-  const [editWords, setEditWords] = useState<{id?: string, front: string, back: string}[]>([])
+  const [editWords, setEditWords] = useState<{ id?: string, front: string, back: string }[]>([])
   const [saving, setSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     fetchWordbook()
@@ -115,6 +116,7 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
     e.preventDefault()
     setSaving(true)
     setError(null)
+    setSaveSuccess(false); // 保存開始時に成功メッセージをリセット
     try {
       // タイトル更新
       if (editTitle !== wordbook?.title) {
@@ -154,6 +156,9 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
       }
       fetchWordbook()
       fetchWords()
+      await new Promise(resolve => setTimeout(resolve, 500)); // 意図的な遅延 (例)
+      setSaveSuccess(true); // 保存成功
+      setTimeout(() => setSaveSuccess(false), 2000); // 2秒後に成功メッセージを消す
     } catch (error: any) {
       setError(error.message)
     } finally {
@@ -190,9 +195,14 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
       <Header showBackButton backUrl="/dashboard" />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">単語帳編集</h1>
+        <div className="flex space-x-2">
+          <Link href={`/wordbooks/${params.id}/test`}>
+            <Button variant="secondary">学習する</Button>
+          </Link>
+        </div>
         <form onSubmit={handleSave} className="space-y-6 mb-8">
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700">タイトル</label>
+            <label htmlFor="title" className="block text-sm font-medium text-gray-700">単語帳のタイトル</label>
             <Input
               type="text"
               id="title"
@@ -229,64 +239,8 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
           <div className="flex justify-end space-x-4">
             <Button type="submit" disabled={saving}>{saving ? '保存中...' : '保存'}</Button>
           </div>
+          {saveSuccess && <span className="text-green-500">保存完了！</span>}
         </form>
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              {wordbook?.title}
-            </h1>
-            <p className="text-sm text-gray-500">
-              作成日: {new Date(wordbook?.created_at || '').toLocaleDateString()}
-            </p>
-          </div>
-          <div className="flex space-x-2">
-            <Link href={`/wordbooks/${params.id}/test`}>
-              <Button variant="secondary">学習する</Button>
-            </Link>
-            <Link href={`/wordbooks/${params.id}/words/new`}>
-              <Button>追加</Button>
-            </Link>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {words.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <p className="text-gray-500 mb-4">単語が登録されていません</p>
-                <Button type="button" onClick={handleAddWord}>単語を追加</Button>
-              </CardContent>
-            </Card>
-          ) : (
-            words.map((word) => (
-              <Card key={word.id}>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{word.front}</CardTitle>
-                    <p className="text-gray-500 mt-1">{word.back}</p>
-                  </div>
-                  <Dialog open={deleteDialogOpen && deleteTargetId === word.id} onOpenChange={(open) => { setDeleteDialogOpen(open); if (!open) setDeleteTargetId(null) }}>
-                    <DialogTrigger asChild>
-                      <Button variant="destructive" size="sm" onClick={() => { setDeleteDialogOpen(true); setDeleteTargetId(word.id) }}>削除</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeaderUI>
-                        <DialogTitleUI>本当に削除しますか？</DialogTitleUI>
-                        <DialogDescription>この単語カードは元に戻せません。</DialogDescription>
-                      </DialogHeaderUI>
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button variant="secondary">キャンセル</Button>
-                        </DialogClose>
-                        <Button variant="destructive" onClick={handleDeleteWord}>削除</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </CardHeader>
-              </Card>
-            ))
-          )}
-        </div>
       </div>
     </div>
   )
