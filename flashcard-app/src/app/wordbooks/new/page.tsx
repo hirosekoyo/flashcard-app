@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import Header from '@/components/Header'
 
 export default function NewWordbookPage() {
   const [title, setTitle] = useState('')
@@ -56,11 +57,10 @@ export default function NewWordbookPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md mx-auto">
-        <h1 className="text-3xl font-bold text-center text-gray-900 mb-8">
-          新規作成
-        </h1>
+    <div className="min-h-screen bg-gray-50">
+      <Header showBackButton backUrl="/dashboard" />
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">新規作成</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
