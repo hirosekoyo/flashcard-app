@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -18,6 +18,7 @@ import {
   DialogClose,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface Word {
   id: string
@@ -44,6 +45,9 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
   const [editWords, setEditWords] = useState<{ id?: string, front: string, back: string }[]>([])
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importDelimiter, setImportDelimiter] = useState('tab');
+  const [splitByNewline, setSplitByNewline] = useState(true); // 改行で分割するかどうかの状態
 
   useEffect(() => {
     fetchWordbook()
@@ -166,6 +170,45 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
     }
   }
 
+  const handleImportWords = useCallback(() => {
+    if (!importText) return;
+
+    const separator = importDelimiter === 'tab' ? '\t' : ',';
+    const textToSplit = splitByNewline ? importText.split('\n') : [importText];
+    const newWords = textToSplit.flatMap(line => line.split(separator).map(s => s.trim()));
+
+    const newWordPairs: { id?: string, front: string, back: string }[] = [];
+
+    for (let i = 0; i < newWords.length; i += 2) {
+      const front = newWords[i] || '';
+      const back = newWords[i + 1] || '';
+      if (front || back) {
+        newWordPairs.push({ front, back });
+      }
+    }
+
+    // 重複をチェック（frontとbackの組み合わせで比較）
+    const existingWordSet = new Set(editWords.map(w => `${w.front.trim()}-${w.back.trim()}`));
+    const uniqueNewWordPairs = newWordPairs.filter(pair => {
+      const key = `${pair.front.trim()}-${pair.back.trim()}`;
+      if (!existingWordSet.has(key) && (pair.front || pair.back)) {
+        existingWordSet.add(key);
+        return true;
+      }
+      return false;
+    });
+
+    const skippedCount = newWordPairs.length - uniqueNewWordPairs.length;
+
+    setEditWords(prevWords => [...prevWords, ...uniqueNewWordPairs]);
+    setImportText('');
+
+    if (skippedCount > 0) {
+      alert(`${skippedCount}件の重複する単語がスキップされました。`);
+    }
+  }, [importDelimiter, importText, editWords, splitByNewline]);
+
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -233,6 +276,54 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
                 </div>
               ))}
               <Button type="button" variant="secondary" size="sm" onClick={handleAddWord}>単語を追加</Button>
+              <label className="block text-sm font-medium text-gray-700 mt-4">
+                タブ区切りまたはカンマ区切りで一括登録
+              </label>
+              <textarea
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                placeholder="例: apple	りんご, banana	バナナ"
+                rows={3}
+                className="mt-1 w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              />
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    value="tab"
+                    checked={importDelimiter === 'tab'}
+                    onChange={(e) => setImportDelimiter(e.target.value)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <span className="text-sm font-medium text-gray-700">タブ区切り</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    value="comma"
+                    checked={importDelimiter === 'comma'}
+                    onChange={(e) => setImportDelimiter(e.target.value)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <span className="text-sm font-medium text-gray-700">カンマ区切り</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <Checkbox
+                    checked={splitByNewline}
+                    onCheckedChange={setSplitByNewline}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <span className="text-sm font-medium text-gray-700">改行を新しい単語として扱う</span>
+                </label>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleImportWords}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md py-2 px-4 focus:outline-none focus:shadow-outline"
+                >
+                  インポート
+                </Button>
+              </div>
             </div>
           </div>
           {error && <div className="text-red-500 text-sm text-center">{error}</div>}
@@ -244,4 +335,4 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
       </div>
     </div>
   )
-} 
+}
