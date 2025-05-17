@@ -174,12 +174,44 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
     if (!importText) return;
 
     const separator = importDelimiter === 'tab' ? '\t' : ',';
-    const textToSplit = splitByNewline ? importText.split('\n') : [importText];
-    const newWords = textToSplit.flatMap(line => line.split(separator).map(s => s.trim()));
+    const lines = splitByNewline ? importText.split('\n') : [importText];
+    let newWords: string[] = [];
+    let inQuote = false;
+    let currentWord = '';
+
+    lines.forEach(line => {
+      const parts = line.split(separator);
+      parts.forEach(part => {
+        const trimmedPart = part.trim();
+        if (inQuote) {
+          currentWord += separator + trimmedPart; // 区切り文字を保持
+          if (trimmedPart.endsWith('"')) {
+            inQuote = false;
+            newWords.push(currentWord.slice(0, -1)); // 最後の " を除く
+            currentWord = '';
+          }
+        } else {
+          if (trimmedPart.startsWith('"')) {
+            inQuote = true;
+            currentWord = trimmedPart.slice(1); // 最初の " を除く
+            if (trimmedPart.endsWith('"')) {
+              inQuote = false;
+              newWords.push(currentWord.slice(0, -1));
+              currentWord = '';
+            }
+          } else {
+            newWords.push(trimmedPart);
+          }
+        }
+      });
+      if (inQuote) {
+        currentWord += '\n'; // 行が終わってもクオートが閉じられていない場合は改行を保持
+      }
+    });
+
 
     const newWordPairs: { id?: string, front: string, back: string }[] = [];
-
-    for (let i = 0; i < newWords.length; i += 2) {
+       for (let i = 0; i < newWords.length; i += 2) {
       const front = newWords[i] || '';
       const back = newWords[i + 1] || '';
       if (front || back) {
@@ -199,13 +231,13 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
     });
 
     const skippedCount = newWordPairs.length - uniqueNewWordPairs.length;
-
     setEditWords(prevWords => [...prevWords, ...uniqueNewWordPairs]);
     setImportText('');
 
     if (skippedCount > 0) {
-      alert(`${skippedCount}件の重複する単語がスキップされました。`);
+      alert(`${skippedCount} 件の重複する単語がスキップされました。`);
     }
+
   }, [importDelimiter, importText, editWords, splitByNewline]);
 
 
@@ -336,3 +368,4 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
     </div>
   )
 }
+
