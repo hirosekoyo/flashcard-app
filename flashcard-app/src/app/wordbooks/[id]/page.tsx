@@ -309,7 +309,7 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
               ))}
               <Button type="button" variant="secondary" size="sm" onClick={handleAddWord}>単語を追加</Button>
               <label className="block text-sm font-medium text-gray-700 mt-4">
-                タブ区切りまたはカンマ区切りで一括登録
+                タブ区切りまたはカンマ区切りで一括登録（重複は自動でスキップされます）
               </label>
               <textarea
                 value={importText}
