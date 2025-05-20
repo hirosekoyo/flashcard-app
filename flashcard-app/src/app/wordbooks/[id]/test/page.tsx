@@ -12,25 +12,16 @@ interface Word {
   back: string
 }
 
-interface LearningProgress {
-  level: number
-}
-
 export default function TestPage() {
   const params = useParams<{ id: string }>();
   const [words, setWords] = useState<Word[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [showAnswer, setShowAnswer] = useState(false)
   const [loading, setLoading] = useState(true)
   const [isFlipped, setIsFlipped] = useState(false)
   const [progresses, setProgresses] = useState<Record<string, number>>({})
   const router = useRouter()
 
-  useEffect(() => {
-    fetchWords()
-    fetchProgress()
-  }, [params.id])
-
+  // fetchWords 関数
   const fetchWords = async () => {
     try {
       const { data, error } = await supabase
@@ -41,28 +32,65 @@ export default function TestPage() {
 
       if (error) throw error
       setWords(data || [])
+      return data || [] // 取得したwordsを返す
     } catch (error) {
       console.error('Error fetching words:', error)
+      return [] // エラー時は空配列を返す
     } finally {
-      setLoading(false)
+      // setLoading(false) は全てのフェッチが完了した後に調整
     }
   }
 
-  const fetchProgress = async () => {
+  // fetchProgress 関数 (wordsデータを引数として受け取るように変更)
+  const fetchProgress = async (fetchedWords: Word[]) => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
+
+      const wordIds = fetchedWords.map(w => w.id)
+      if (wordIds.length === 0) {
+        console.log("No words to fetch progress for.");
+        setProgresses({}); // 単語がない場合は進捗を空にする
+        return;
+      }
+
       const { data, error } = await supabase
         .from('learning_progress')
         .select('word_id, level')
         .eq('user_id', user.id)
-        .in('word_id', words.map(w => w.id))
+        .in('word_id', wordIds) // ここでfetchWordsから渡された単語IDを使用
       if (error) throw error
+
       const map: Record<string, number> = {}
       data?.forEach((row: any) => { map[row.word_id] = row.level })
+
       setProgresses(map)
-    } catch (e) { }
+    } catch (e) {
+      console.error('Error fetching progress:', e); // エラーハンドリングを改善
+    } finally {
+      setLoading(false) // 全てのフェッチが完了したらローディングを解除
+    }
   }
+
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true); // フェッチ開始時にローディングを設定
+      // 最初に単語を取得し、その結果をプログレスのフェッチに渡す
+      const fetchedWordsData = await fetchWords();
+      // fetchWordsが単語を返した場合のみfetchProgressを実行
+      if (fetchedWordsData.length > 0) {
+        await fetchProgress(fetchedWordsData);
+      } else {
+        // 単語がない場合はローディングを解除
+        setLoading(false);
+      }
+    };
+
+    // params.id が変更されたときにデータを再ロード
+    if (params.id) {
+      loadData();
+    }
+  }, [params.id]); // params.id が変更されたときに再実行
 
   const getNextReviewDate = (level: number) => {
     const today = new Date()
@@ -94,9 +122,9 @@ export default function TestPage() {
     const nextReview = getNextReviewDate(newLevel)
     const { error } = await supabase
       .from('learning_progress')
-      .upsert({ user_id: user.id, word_id: word.id, level: newLevel, next_review_at: nextReview })
+      .upsert({ user_id: user.id, word_id: word.id, level: newLevel, next_review_at: nextReview }, { onConflict: 'user_id,word_id' }) // onConflict を追加
     if (error) {
-      console.error('upsert error:', error)
+      console.error('upsert error (handleRemember):', error)
     }
     setProgresses((prev) => ({ ...prev, [word.id]: newLevel }))
     goNext()
@@ -109,11 +137,11 @@ export default function TestPage() {
     const nextReview = getNextReviewDate(0)
     const { error } = await supabase
       .from('learning_progress')
-      .upsert({ user_id: user.id, word_id: word.id, level: 1, next_review_at: nextReview })
+      .upsert({ user_id: user.id, word_id: word.id, level: 0, next_review_at: nextReview }, { onConflict: 'user_id,word_id' }) // onConflict を追加
     if (error) {
-      console.error('upsert error:', error)
+      console.error('upsert error (handleForget):', error)
     }
-    setProgresses((prev) => ({ ...prev, [word.id]: 1 }))
+    setProgresses((prev) => ({ ...prev, [word.id]: 0 })) // 忘れた場合はレベルを0に設定
     goNext()
   }
 
@@ -197,4 +225,4 @@ export default function TestPage() {
       `}</style>
     </div>
   )
-} 
+}
