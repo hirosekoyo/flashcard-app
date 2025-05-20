@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -33,7 +33,8 @@ interface Wordbook {
   created_at: string
 }
 
-export default function WordbookDetailPage({ params }: { params: { id: string } }) {
+export default function WordbookDetailPage() {
+  const params = useParams<{ id: string }>();
   const [wordbook, setWordbook] = useState<Wordbook | null>(null)
   const [words, setWords] = useState<Word[]>([])
   const [loading, setLoading] = useState(true)
