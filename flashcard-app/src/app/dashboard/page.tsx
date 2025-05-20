@@ -179,7 +179,6 @@ export default function DashboardPage() {
                           <CardTitle className="text-xl">{wordbook.title}</CardTitle>
                           <CardDescription>{wordbook.card_count}枚のカード</CardDescription>
                           <CardDescription>作成日: {new Date(wordbook.created_at).toLocaleDateString()}</CardDescription>
-                          <Button type="button" variant="destructive" size="sm" >削除</Button>
                         </CardHeader>
                       </Card>
                     </Link>

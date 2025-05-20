@@ -48,6 +48,7 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
   const [importText, setImportText] = useState('');
   const [importDelimiter, setImportDelimiter] = useState('tab');
   const [splitByNewline, setSplitByNewline] = useState(true); // 改行で分割するかどうかの状態
+  const [deleteWordbookDialogOpen, setDeleteWordbookDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchWordbook()
@@ -174,7 +175,8 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
     if (!importText) return;
 
     const separator = importDelimiter === 'tab' ? '\t' : ',';
-    const lines = splitByNewline ? importText.split('\n') : [importText];
+    // const lines = splitByNewline ? importText.split('\n') : [importText];　ひろせ
+    const lines = splitByNewline ? importText.split(/\r\n|\r|\n/) : [importText];
     let newWords: string[] = [];
     let inQuote = false;
     let currentWord = '';
@@ -184,7 +186,8 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
       parts.forEach(part => {
         const trimmedPart = part.trim();
         if (inQuote) {
-          currentWord += separator + trimmedPart; // 区切り文字を保持
+          // currentWord += separator + trimmedPart; // 区切り文字を保持　ひろせ
+          currentWord += trimmedPart; // 区切り文字を保持しない
           if (trimmedPart.endsWith('"')) {
             inQuote = false;
             newWords.push(currentWord.slice(0, -1)); // 最後の " を除く
@@ -211,7 +214,7 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
 
 
     const newWordPairs: { id?: string, front: string, back: string }[] = [];
-       for (let i = 0; i < newWords.length; i += 2) {
+    for (let i = 0; i < newWords.length; i += 2) {
       const front = newWords[i] || '';
       const back = newWords[i + 1] || '';
       if (front || back) {
@@ -265,6 +268,33 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
     )
   }
 
+  const handleRemoveWordbook = async () => {
+    try {
+      // まず、関連する単語を削除する
+      const { error: deleteWordsError } = await supabase
+        .from('words')
+        .delete()
+        .eq('wordbook_id', params.id);
+
+      if (deleteWordsError) throw deleteWordsError;
+
+      // 次に、単語帳自体を削除する
+      const { error: deleteWordbookError } = await supabase
+        .from('wordbooks')
+        .delete()
+        .eq('id', params.id);
+
+      if (deleteWordbookError) throw deleteWordbookError;
+
+      router.push('/dashboard');
+    } catch (error: any) {
+      console.error('Error deleting wordbook and associated words:', error);
+      setError('単語帳と関連する単語の削除に失敗しました');
+    } finally {
+      setDeleteWordbookDialogOpen(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header showBackButton backUrl="/dashboard" />
@@ -274,6 +304,26 @@ export default function WordbookDetailPage({ params }: { params: { id: string } 
           <Link href={`/wordbooks/${params.id}/test`}>
             <Button variant="secondary">学習する</Button>
           </Link>
+{/* ひろせ　ダイアログコンポーネントをつかう */}
+          <Dialog open={deleteWordbookDialogOpen} onOpenChange={setDeleteWordbookDialogOpen}>
+            <DialogTrigger asChild>
+              <Button type="button" variant="destructive" size="sm">単語帳を削除する</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeaderUI>
+                <DialogTitleUI>単語帳の削除</DialogTitleUI>
+                <DialogDescription>
+                  本当にこの単語帳を削除しますか？削除すると、単語帳に含まれる全ての単語も削除されます。この操作は取り消せません。
+                </DialogDescription>
+              </DialogHeaderUI>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="secondary">キャンセル</Button>
+                </DialogClose>
+                <Button type="button" variant="destructive" onClick={handleRemoveWordbook}>削除</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
         <form onSubmit={handleSave} className="space-y-6 mb-8">
           <div>
