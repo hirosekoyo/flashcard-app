@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { useRouter, useSearchParams } from 'next/navigation' // useParams を useSearchParams に変更
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
@@ -10,31 +10,30 @@ interface Word {
   id: string
   front: string
   back: string
-  wordbook_id: string // どの単語帳に属するかを保持するため追加
+  wordbook_id: string
 }
 
-interface StudySettings { // 学習設定用のインターフェース
+interface StudySettings {
   frontToBack: boolean
   useSpacedRepetition: boolean
 }
 
 export default function TestPage() {
   const router = useRouter()
-  const searchParams = useSearchParams() // クエリパラメータを取得
+  const searchParams = useSearchParams()
 
   const [words, setWords] = useState<Word[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [isFlipped, setIsFlipped] = useState(false)
   const [progresses, setProgresses] = useState<Record<string, number>>({})
-  const [mistake, setMistake] = useState<Record<string, number>>({}) // タイポを修正: setMisitake -> setMistake
-  const [studySettings, setStudySettings] = useState<StudySettings>({ // 学習設定のstate
+  const [mistake, setMistake] = useState<Record<string, number>>({})
+  const [studySettings, setStudySettings] = useState<StudySettings>({
     frontToBack: true,
     useSpacedRepetition: false,
   })
-  const [wordbookIds, setWordbookIds] = useState<string[]>([]) // 学習対象の単語帳IDリスト
+  const [wordbookIds, setWordbookIds] = useState<string[]>([])
 
-  // クエリパラメータから学習設定と単語帳IDを読み込むEffect
   useEffect(() => {
     const idsQuery = searchParams.get('ids')
     const frontToBackQuery = searchParams.get('frontToBack')
@@ -45,13 +44,11 @@ export default function TestPage() {
     }
 
     setStudySettings({
-      frontToBack: frontToBackQuery === 'true', // 文字列からbooleanに変換
-      useSpacedRepetition: useSpacedRepetitionQuery === 'true', // 文字列からbooleanに変換
+      frontToBack: frontToBackQuery === 'true',
+      useSpacedRepetition: useSpacedRepetitionQuery === 'true',
     })
   }, [searchParams])
 
-
-  // fetchWords 関数 (複数のwordbook_idに対応)
   const fetchWords = async (ids: string[]) => {
     if (ids.length === 0) {
       setWords([])
@@ -61,23 +58,21 @@ export default function TestPage() {
       const { data, error } = await supabase
         .from('words')
         .select('*')
-        .in('wordbook_id', ids) // 複数のIDで検索
-        .order('created_at', { ascending: true }) // 必要に応じて並び替え順を検討
+        .in('wordbook_id', ids)
+        .order('created_at', { ascending: true })
 
       if (error) throw error
-      
-      // 取得した単語をシャッフルする (オプション)
+
       const shuffledWords = data ? [...data].sort(() => Math.random() - 0.5) : []
       setWords(shuffledWords)
       return shuffledWords
 
     } catch (error) {
       console.error('Error fetching words:', error)
-      setWords([]) // エラー時は空配列を設定
+      setWords([])
       return []
     }
   }
-
 
   const fetchProgress = async (fetchedWords: Word[]) => {
     try {
@@ -115,7 +110,7 @@ export default function TestPage() {
     const loadData = async () => {
       if (wordbookIds.length === 0) {
         setLoading(false)
-        setWords([]) // IDがない場合は単語も空にする
+        setWords([])
         return
       }
       setLoading(true)
@@ -127,7 +122,7 @@ export default function TestPage() {
     }
 
     loadData()
-  }, [wordbookIds]) // wordbookIds が変更されたときに再実行
+  }, [wordbookIds])
 
   const getNextReviewDate = (level: number) => {
     const today = new Date()
@@ -151,7 +146,7 @@ export default function TestPage() {
   }
 
   const handleRemember = async () => {
-    if (words.length === 0) return; // 単語がない場合は何もしない
+    if (words.length === 0) return;
     const word = words[currentIndex]
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
@@ -169,7 +164,7 @@ export default function TestPage() {
   }
 
   const handleForget = async () => {
-    if (words.length === 0) return; // 単語がない場合は何もしない
+    if (words.length === 0) return;
     const word = words[currentIndex]
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
@@ -187,14 +182,18 @@ export default function TestPage() {
   }
 
   const goNext = () => {
-    setIsFlipped(false)
-    if (currentIndex < words.length - 1) {
-      setCurrentIndex(currentIndex + 1)
-    } else {
-      // 複数の単語帳を学習した場合、特定の単語帳に戻るのではなくダッシュボードが良いでしょう
-      router.push(`/dashboard`)
-    }
-  }
+    setCurrentIndex(prevIndex => {
+      const nextIndex = prevIndex + 1;
+      if (nextIndex < words.length) {
+        setIsFlipped(false); // 次のカードへ進む前に裏返し状態をリセット
+        return nextIndex;
+      } else {
+        router.push(`/dashboard`);
+        return prevIndex; // 最終カードの場合はインデックスを変えない
+      }
+    });
+  };
+
 
   if (loading) {
     return (
@@ -210,7 +209,7 @@ export default function TestPage() {
         <div className="text-center">
           <p className="text-lg text-gray-500">単語が登録されていません</p>
           <button
-            onClick={() => router.push(`/dashboard`)} // 戻り先をダッシュボードに
+            onClick={() => router.push(`/dashboard`)}
             className="mt-4 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             ダッシュボードに戻る
@@ -221,7 +220,6 @@ export default function TestPage() {
   }
 
   const currentWord = words[currentIndex]
-  // studySettings.frontToBack に応じて表示する面を決定
   const frontContent = studySettings.frontToBack ? currentWord.front : currentWord.back;
   const backContent = studySettings.frontToBack ? currentWord.back : currentWord.front;
 
@@ -234,19 +232,21 @@ export default function TestPage() {
           </p>
         </div>
         <div className="flex justify-center mb-8">
+          {/* key を currentIndex または currentWord.id に設定して再マウントを強制 */}
           <div
+            key={currentWord.id} // ← ここに key を追加
             className={`relative w-80 h-48 cursor-pointer perspective`}
             onClick={() => setIsFlipped(f => !f)}
           >
             <div className={`absolute w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${isFlipped ? 'rotate-y-180' : ''}`}>
               <Card className="absolute w-full h-full backface-hidden flex items-center justify-center text-2xl font-bold">
-                <CardContent className="flex items-center justify-center h-full text-2xl font-bold p-4 text-center"> {/* p-4 text-center を追加 */}
-                  {frontContent} {/* 学習設定に応じて表示 */}
+                <CardContent className="flex items-center justify-center h-full text-2xl font-bold p-4 text-center">
+                  {frontContent}
                 </CardContent>
               </Card>
               <Card className="absolute w-full h-full backface-hidden flex items-center justify-center text-2xl font-bold rotate-y-180">
-                <CardContent className="flex items-center justify-center h-full text-2xl font-bold p-4 text-center"> {/* p-4 text-center を追加 */}
-                  {backContent} {/* 学習設定に応じて表示 */}
+                <CardContent className="flex items-center justify-center h-full text-2xl font-bold p-4 text-center">
+                  {backContent}
                 </CardContent>
               </Card>
             </div>

@@ -103,8 +103,7 @@ export default function DashboardPage() {
     queryParams.append('frontToBack', String(studySettings.frontToBack));
     queryParams.append('useSpacedRepetition', String(studySettings.useSpacedRepetition));
 
-    // 暗記テスト画面に遷移 (例: /study ページ)
-    // このパスは実際のテストページのパスに合わせてください
+
     router.push(`/wordbooks/${selectedIds[0]}/test?${queryParams.toString()}`);
   };
 
