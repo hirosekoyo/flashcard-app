@@ -19,6 +19,7 @@ export default function TestPage() {
   const [loading, setLoading] = useState(true)
   const [isFlipped, setIsFlipped] = useState(false)
   const [progresses, setProgresses] = useState<Record<string, number>>({})
+  const [mistake, setMisitake] = useState<Record<string, number>>({})
   const router = useRouter()
 
   // fetchWords 関数
@@ -51,20 +52,25 @@ export default function TestPage() {
       if (wordIds.length === 0) {
         console.log("No words to fetch progress for.");
         setProgresses({}); // 単語がない場合は進捗を空にする
+        setMisitake({}); // 単語がない場合は間違えた回数を空にする
         return;
       }
 
       const { data, error } = await supabase
         .from('learning_progress')
-        .select('word_id, level')
+        .select('word_id, level, mistake_count')
         .eq('user_id', user.id)
         .in('word_id', wordIds) // ここでfetchWordsから渡された単語IDを使用
       if (error) throw error
 
-      const map: Record<string, number> = {}
-      data?.forEach((row: any) => { map[row.word_id] = row.level })
+      const Pmap: Record<string, number> = {}
+      data?.forEach((row: any) => { Pmap[row.word_id] = row.level })
+      setProgresses(Pmap)
 
-      setProgresses(map)
+      const Mmap: Record<string, number> = {}
+      data?.forEach((row: any) => { Mmap[row.word_id] = row.mistake_count })
+      setMisitake(Mmap)
+
     } catch (e) {
       console.error('Error fetching progress:', e); // エラーハンドリングを改善
     } finally {
@@ -134,11 +140,12 @@ export default function TestPage() {
     const word = words[currentIndex]
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const nextReview = getNextReviewDate(0)
-    console.log(nextReview)
+    const currentMistake = mistake[word.id] ?? 0
+    const newMistake = Math.min(currentMistake + 1, 999)
+    // const nextReview = getNextReviewDate(0) めちゃ未来にするからいらないかな？
     const { error } = await supabase
       .from('learning_progress')
-      .upsert({ user_id: user.id, word_id: word.id, level: 0, next_review_at: '2100-01-01' }, { onConflict: 'user_id,word_id' }) // onConflict を追加
+      .upsert({ user_id: user.id, word_id: word.id, level: 0, next_review_at: '2100-01-01', mistake_count: newMistake }, { onConflict: 'user_id,word_id' }) // onConflict を追加
     if (error) {
       console.error('upsert error (handleForget):', error)
     }
