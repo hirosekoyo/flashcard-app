@@ -94,14 +94,19 @@ export default function DashboardPage() {
   const startStudy = () => {
     const selectedIds = Object.entries(selectedWordbooks)
       .filter(([_, isSelected]) => isSelected)
-      .map(([id]) => id)
+      .map(([id]) => id);
 
-    if (selectedIds.length === 0) return
 
-    // 暗記テスト画面に遷移する処理
-    // この部分は後ほど実装
-    alert('暗記テストを開始します')
-  }
+    // クエリパラメータを作成
+    const queryParams = new URLSearchParams();
+    queryParams.append('ids', selectedIds.join(',')); // 選択されたIDをカンマ区切りで結合
+    queryParams.append('frontToBack', String(studySettings.frontToBack));
+    queryParams.append('useSpacedRepetition', String(studySettings.useSpacedRepetition));
+
+    // 暗記テスト画面に遷移 (例: /study ページ)
+    // このパスは実際のテストページのパスに合わせてください
+    router.push(`/wordbooks/${selectedIds[0]}/test?${queryParams.toString()}`);
+  };
 
   if (loading) {
     return (

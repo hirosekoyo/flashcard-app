@@ -302,9 +302,6 @@ export default function WordbookDetailPage() {
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">単語帳編集</h1>
         <div className="flex space-x-2">
-          <Link href={`/wordbooks/${params.id}/test`}>
-            <Button variant="secondary">学習する</Button>
-          </Link>
 {/* ひろせ　ダイアログコンポーネントをつかう */}
           <Dialog open={deleteWordbookDialogOpen} onOpenChange={setDeleteWordbookDialogOpen}>
             <DialogTrigger asChild>
