@@ -135,9 +135,10 @@ export default function TestPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     const nextReview = getNextReviewDate(0)
+    console.log(nextReview)
     const { error } = await supabase
       .from('learning_progress')
-      .upsert({ user_id: user.id, word_id: word.id, level: 0, next_review_at: nextReview }, { onConflict: 'user_id,word_id' }) // onConflict を追加
+      .upsert({ user_id: user.id, word_id: word.id, level: 0, next_review_at: '2100-01-01' }, { onConflict: 'user_id,word_id' }) // onConflict を追加
     if (error) {
       console.error('upsert error (handleForget):', error)
     }
