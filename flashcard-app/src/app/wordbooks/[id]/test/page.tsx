@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, startTransition } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
@@ -13,7 +13,7 @@ interface Word {
   next_review_at: string | null; // ISO 8601形式の文字列と仮定 (時刻情報も含む可能性) または null
   wordbook_id: string;
   // Supabase の結合結果を考慮し、words は単一オブジェクトとしてネストされると想定
-  words: { 
+  words: {  
     front: string;
     back: string;
   };
@@ -32,8 +32,7 @@ export default function TestPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [isFlipped, setIsFlipped] = useState(false)
-  // word.word_id をキーとして使用
-  const [progresses, setProgresses] = useState<Record<string, number>>({}) 
+  const [progresses, setProgresses] = useState<Record<string, number>>({})  
   const [mistake, setMistake] = useState<Record<string, number>>({})
   const [studySettings, setStudySettings] = useState<StudySettings>({
     frontToBack: true,
@@ -69,9 +68,10 @@ const fetchTestData = async (wordbookIds: string[]) => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
+      router.push('/login');
       setWords([]);
       setLoading(false);
-      return; 
+      return;  
     }
     
     let query = supabase
@@ -84,7 +84,7 @@ const fetchTestData = async (wordbookIds: string[]) => {
         wordbook_id,
         words!inner(front, back)
       `)
-      .in('wordbook_id', wordbookIds); 
+      .in('wordbook_id', wordbookIds);  
 
     // スペース反復が有効な場合のみ、追加のフィルタとソートを適用
     if (studySettings.useSpacedRepetition) {
@@ -93,8 +93,8 @@ const fetchTestData = async (wordbookIds: string[]) => {
 
       query = query
         .or(`next_review_at.lte.${startOfToday.toISOString()},next_review_at.is.null`)
-        .order('next_review_at', { ascending: true }) 
-        .order('mistake_count', { ascending: false }); 
+        .order('next_review_at', { ascending: true })  
+        .order('mistake_count', { ascending: false });  
     }
     // studySettings.useSpacedRepetition が false の場合、ここでは order やその他の条件を追加しない
 
@@ -114,15 +114,15 @@ const fetchTestData = async (wordbookIds: string[]) => {
     }
 
     let transformedWords: Word[] = data.map((item: any) => {
-      const wordsData = item.words; 
+      const wordsData = item.words;  
       return {
         word_id: item.word_id,
         level: item.level,
         mistake_count: item.mistake_count,
         next_review_at: item.next_review_at,
         wordbook_id: item.wordbook_id,
-        words: { 
-          front: wordsData?.front || '', 
+        words: {  
+          front: wordsData?.front || '',  
           back: wordsData?.back || ''    
         }
       };
@@ -133,7 +133,7 @@ const fetchTestData = async (wordbookIds: string[]) => {
       transformedWords = transformedWords.sort(() => Math.random() - 0.5);
     }
 
-    setWords(transformedWords); 
+    setWords(transformedWords);  
     setLoading(false);
     
   } catch (error) {
@@ -151,7 +151,7 @@ const fetchTestData = async (wordbookIds: string[]) => {
         return;
       }
       setLoading(true); // ロード開始
-      await fetchTestData(wordbookIds); 
+      await fetchTestData(wordbookIds);  
       // fetchTestData内でsetLoading(false)を呼ぶので、ここでの追加のsetLoading(false)は不要
     };
     
@@ -185,31 +185,31 @@ const fetchTestData = async (wordbookIds: string[]) => {
     return today.toISOString()
   }
 
-const handleRemember = async () => {
-  if (words.length === 0) return;
-  const word = words[currentIndex];
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+  const handleRemember = async () => {
+    if (words.length === 0) return;
+    const word = words[currentIndex];
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
-  const currentLevel = progresses[word.word_id] ?? word.level;
-  const newLevel = Math.min(currentLevel + 1, 10); 
-  const nextReview = getNextReviewDate(newLevel);
+    const currentLevel = progresses[word.word_id] ?? word.level;
+    const newLevel = Math.min(currentLevel + 1, 10);
+    const nextReview = getNextReviewDate(newLevel);
+    
+    const targetWordbookId = word.wordbook_id;  
 
-  const targetWordbookId = word.wordbook_id;
-
-  const { error } = await supabase
-    .from('learning_progress')
-    .upsert({ user_id: user.id, wordbook_id: targetWordbookId, word_id: word.word_id, level: newLevel, next_review_at: nextReview, mistake_count: mistake[word.word_id] ?? 0 }, { onConflict: 'user_id,word_id,wordbook_id' });
-  if (error) {
-    console.error('upsert error (handleRemember):', error);
-    console.error('Error details:', error.details);
-    console.error('Error message:', error.message);
-  }
-  // progresses を更新する際も word.word_id をキーとして使用
-  setProgresses((prev) => ({ ...prev, [word.word_id]: newLevel }));
-
-  goNext();
-};
+    const { error } = await supabase
+      .from('learning_progress')
+      .upsert({ user_id: user.id, wordbook_id: targetWordbookId, word_id: word.word_id, level: newLevel, next_review_at: nextReview, mistake_count: mistake[word.word_id] ?? 0 }, { onConflict: 'user_id,word_id,wordbook_id' });
+    if (error) {
+      console.error('upsert error (handleRemember):', error);
+      console.error('Error details:', error.details);  
+      console.error('Error message:', error.message);
+    }
+    // progresses を更新する際も word.word_id をキーとして使用
+    setProgresses((prev) => ({ ...prev, [word.word_id]: newLevel }));
+    
+    goNext();
+  };
 
 
   const handleForget = async () => {
@@ -218,17 +218,17 @@ const handleRemember = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     // progresses と mistake のキーを word.word_id に変更
-    const currentMistake = mistake[word.word_id] ?? 0 
+    const currentMistake = mistake[word.word_id] ?? 0  
     const newMistake = Math.min(currentMistake + 1, 999)
     
-    const targetWordbookId = word.wordbook_id; 
+    const targetWordbookId = word.wordbook_id;  
 
     const { error } = await supabase
       .from('learning_progress')
-      .upsert({ user_id: user.id, wordbook_id: targetWordbookId, word_id: word.word_id, level: 0, next_review_at: null, mistake_count: newMistake }, { onConflict: 'user_id,word_id,wordbook_id' }) 
+      .upsert({ user_id: user.id, wordbook_id: targetWordbookId, word_id: word.word_id, level: 0, next_review_at: null, mistake_count: newMistake }, { onConflict: 'user_id,word_id,wordbook_id' })  
     if (error) {
       console.error('upsert error (handleForget):', error)
-      console.error('Error details:', error.details); 
+      console.error('Error details:', error.details);  
       console.error('Error message:', error.message);
     }
     setProgresses((prev) => ({ ...prev, [word.word_id]: 0 })) // キーを word.word_id に
@@ -244,7 +244,10 @@ const handleRemember = async () => {
         setIsFlipped(false);
         return nextIndex;
       } else {
-        router.push(`/dashboard`);
+        // ここで router.push を startTransition でラップする
+        startTransition(() => {
+          router.push(`/dashboard`);
+        });
         return prevIndex;
       }
     });
@@ -266,7 +269,11 @@ const handleRemember = async () => {
           <p className="text-lg text-gray-500">それでも学習したいあなたは、グングンモードをOFFにしてテストしてください</p>
           <p className="text-lg text-gray-500">たまには休んでもいいんですよ。</p>
           <button
-            onClick={() => router.push(`/dashboard`)}
+            onClick={() => {
+              startTransition(() => { // ここも router.push を startTransition でラップ
+                router.push(`/dashboard`);
+              });
+            }}
             className="mt-4 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             ダッシュボードに戻る
@@ -291,7 +298,7 @@ const handleRemember = async () => {
         <div className="flex justify-center mb-8">
           <div
             // key を word_id に変更
-            key={currentWord.word_id} 
+            key={currentWord.word_id}  
             className={`relative w-80 h-48 cursor-pointer perspective`}
             onClick={() => setIsFlipped(f => !f)}
           >
@@ -309,10 +316,16 @@ const handleRemember = async () => {
             </div>
           </div>
         </div>
+        {studySettings.useSpacedRepetition ? (
         <div className="flex justify-center gap-8">
           <Button variant="destructive" size="lg" onClick={handleForget}>忘れた</Button>
           <Button variant="default" size="lg" onClick={handleRemember}>覚えた</Button>
         </div>
+        ) : (
+          <div className="flex justify-center gap-8">
+            <Button variant="destructive" size="lg" onClick={goNext}>次の単語</Button>
+          </div>
+        )}
       </div>
       <style jsx>{`
         .perspective {
