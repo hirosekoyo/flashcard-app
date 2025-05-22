@@ -280,9 +280,8 @@ export default function TestPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-lg text-gray-500">今日のノルマもまだ覚えていない単語もありません</p>
+          <p className="text-lg text-gray-500">今日のノルマも覚えていない単語もありません</p>
           <p className="text-lg text-gray-500">それでも学習したいあなたは、グングンモードをOFFにしてテストしてください</p>
-          <p className="text-lg text-gray-500">たまには休んでもいいんですよ。</p>
           <button
             onClick={() => {
               startTransition(() => {
@@ -332,7 +331,7 @@ export default function TestPage() {
         </div>
         {studySettings.useSpacedRepetition ? (
         <div className="flex justify-center gap-8">
-          <Button variant="destructive" size="lg" onClick={handleForget}>忘れた</Button>
+          <Button variant="destructive" size="lg" onClick={handleForget}>覚えてない</Button>
           <Button variant="default" size="lg" onClick={handleRemember}>覚えた</Button>
         </div>
         ) : (
