@@ -185,30 +185,32 @@ const fetchTestData = async (wordbookIds: string[]) => {
     return today.toISOString()
   }
 
-  const handleRemember = async () => {
-    if (words.length === 0) return;
-    const word = words[currentIndex]
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    // progresses と mistake のキーを word.word_id に変更
-    const currentLevel = progresses[word.word_id] ?? 0 
-    const newLevel = Math.min(currentLevel + 1, 10)
-    const nextReview = getNextReviewDate(newLevel)
-    
-    const targetWordbookId = word.wordbook_id; 
+const handleRemember = async () => {
+  if (words.length === 0) return;
+  const word = words[currentIndex];
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
 
-    const { error } = await supabase
-      .from('learning_progress')
-      .upsert({ user_id: user.id, wordbook_id: targetWordbookId, word_id: word.word_id, level: newLevel, next_review_at: nextReview, mistake_count: mistake[word.word_id] ?? 0 }, { onConflict: 'user_id,word_id,wordbook_id' })
-    if (error) {
-      console.error('upsert error (handleRemember):', error)
-      console.error('Error details:', error.details); 
-      console.error('Error message:', error.message);
-    }
-    setProgresses((prev) => ({ ...prev, [word.word_id]: newLevel })) // キーを word.word_id に
-    
-    goNext()
+  const currentLevel = progresses[word.word_id] ?? word.level;
+  const newLevel = Math.min(currentLevel + 1, 10); 
+  const nextReview = getNextReviewDate(newLevel);
+
+  const targetWordbookId = word.wordbook_id;
+
+  const { error } = await supabase
+    .from('learning_progress')
+    .upsert({ user_id: user.id, wordbook_id: targetWordbookId, word_id: word.word_id, level: newLevel, next_review_at: nextReview, mistake_count: mistake[word.word_id] ?? 0 }, { onConflict: 'user_id,word_id,wordbook_id' });
+  if (error) {
+    console.error('upsert error (handleRemember):', error);
+    console.error('Error details:', error.details);
+    console.error('Error message:', error.message);
   }
+  // progresses を更新する際も word.word_id をキーとして使用
+  setProgresses((prev) => ({ ...prev, [word.word_id]: newLevel }));
+
+  goNext();
+};
+
 
   const handleForget = async () => {
     if (words.length === 0) return;
