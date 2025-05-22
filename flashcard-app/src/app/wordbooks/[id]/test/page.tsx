@@ -38,6 +38,8 @@ export default function TestPage() {
     useSpacedRepetition: true,
   })
   const [wordbookIds, setWordbookIds] = useState<string[]>([])
+  // 今日のレビュー対象となる単語数を保持するstateを追加
+  const [todayReviewWordsCount, setTodayReviewWordsCount] = useState(0);
 
 
   useEffect(() => {
@@ -55,7 +57,6 @@ export default function TestPage() {
     })
   }, [searchParams])
 
-  // --- 新しいヘルパー関数 ---
   // Dateオブジェクトから'YYYY-MM-DD'形式の文字列を生成する
   const getFormattedDate = (date: Date): string => {
     const year = date.getFullYear();
@@ -69,7 +70,6 @@ export default function TestPage() {
     const today = new Date();
     return getFormattedDate(today);
   };
-  // --- ここまで ---
 
   // fetchTestData 関数内
   const fetchTestData = async (wordbookIds: string[]) => {
@@ -77,7 +77,6 @@ export default function TestPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        // ここを startTransition でラップ
         startTransition(() => {
           router.push('/login');
         });
@@ -98,17 +97,17 @@ export default function TestPage() {
         `)
         .in('wordbook_id', wordbookIds);  
 
-      // スペース反復が有効な場合のみ、追加のフィルタとソートを適用
       if (studySettings.useSpacedRepetition) {
         const todayDateString = getTodayDateString();
         
+        // フィルタリングは next_review_at が今日以前かnullの単語を対象にする
         query = query
           .or(`next_review_at.lte.${todayDateString},next_review_at.is.null`)
           .order('next_review_at', { ascending: true })  
           .order('mistake_count', { ascending: false });  
       }
 
-      const { data, error } = await query; // 構築されたクエリを実行
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching test data:', error);
@@ -138,9 +137,16 @@ export default function TestPage() {
         };
       });
       
-      // スペース反復がオフの場合、クライアント側でシャッフル
       if (!studySettings.useSpacedRepetition) {
         transformedWords = transformedWords.sort(() => Math.random() - 0.5);
+      } else {
+        // スペース反復が有効な場合
+        // next_review_at が今日以前の単語のみをカウント
+        const todayDateString = getTodayDateString();
+        const count = transformedWords.filter(word => 
+          word.next_review_at !== null && word.next_review_at <= todayDateString
+        ).length;
+        setTodayReviewWordsCount(count);
       }
 
       setWords(transformedWords);  
@@ -170,9 +176,8 @@ export default function TestPage() {
     }
   }, [wordbookIds, studySettings.useSpacedRepetition]);
 
-  // getNextReviewDate関数を修正：YYYY-MM-DD形式を返すように
   const getNextReviewDate = (level: number): string => {
-    const date = new Date(); // 新しいDateオブジェクトを作成
+    const date = new Date();
     let days = 1;
     switch (level) {
       case 0: days = 1; break;
@@ -188,8 +193,7 @@ export default function TestPage() {
       case 10: days = 180; break;
       default: days = 1;
     }
-    date.setDate(date.getDate() + days); // 日数を加算
-    // getFormattedDateを使って'YYYY-MM-DD'形式の文字列を返す
+    date.setDate(date.getDate() + days);
     return getFormattedDate(date); 
   };
 
@@ -280,7 +284,7 @@ export default function TestPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-lg text-gray-500">今日のノルマも覚えていない単語もありません</p>
+          <p className="text-lg text-gray-500">今日のノルマもまだ覚えていない単語もありません</p>
           <p className="text-lg text-gray-500">それでも学習したいあなたは、グングンモードをOFFにしてテストしてください</p>
           <button
             onClick={() => {
@@ -306,7 +310,16 @@ export default function TestPage() {
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
           <p className="text-sm text-gray-500">
-            {currentIndex + 1} / {words.length}
+            {/* 進捗表示の条件分岐 */}
+            {studySettings.useSpacedRepetition ? (
+              <>
+              今日のノルマは<span className="text-3xl font-bold text-blue-600">{todayReviewWordsCount}</span>枚です！
+              <br />
+              {currentIndex + 1} / {words.length}
+              </> 
+            ) : (
+              <>{currentIndex + 1} / {words.length}</>
+            )}
           </p>
         </div>
         <div className="flex justify-center mb-8">
