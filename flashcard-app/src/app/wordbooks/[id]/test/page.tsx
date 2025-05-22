@@ -10,7 +10,7 @@ interface Word {
   word_id: string; // word_id を ID として使用
   level: number;
   mistake_count: number;
-  next_review_at: string | null; // ISO 8601形式の文字列と仮定 (時刻情報も含む可能性) または null
+  next_review_at: string | null;
   wordbook_id: string;
   words: {  
     front: string;
@@ -55,12 +55,21 @@ export default function TestPage() {
     })
   }, [searchParams])
 
-  // Helper function to get start of today in ISO string
-  const getStartOfTodayISO = () => {
+  // --- 新しいヘルパー関数 ---
+  // Dateオブジェクトから'YYYY-MM-DD'形式の文字列を生成する
+  const getFormattedDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0'); // 月は0から始まるため+1
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // 今日の日付を'YYYY-MM-DD'形式の文字列で取得する
+  const getTodayDateString = (): string => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // 時刻を00:00:00.000に設定
-    return today.toISOString();
-  }
+    return getFormattedDate(today);
+  };
+  // --- ここまで ---
 
   // fetchTestData 関数内
   const fetchTestData = async (wordbookIds: string[]) => {
@@ -68,10 +77,10 @@ export default function TestPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        // // ここを startTransition でラップ
-        // startTransition(() => {
-        //   router.push('/login');
-        // });
+        // ここを startTransition でラップ
+        startTransition(() => {
+          router.push('/login');
+        });
         setWords([]);
         setLoading(false);
         return;  
@@ -91,15 +100,13 @@ export default function TestPage() {
 
       // スペース反復が有効な場合のみ、追加のフィルタとソートを適用
       if (studySettings.useSpacedRepetition) {
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
-
+        const todayDateString = getTodayDateString();
+        
         query = query
-          .or(`next_review_at.lte.${startOfToday.toISOString()},next_review_at.is.null`)
+          .or(`next_review_at.lte.${todayDateString},next_review_at.is.null`)
           .order('next_review_at', { ascending: true })  
           .order('mistake_count', { ascending: false });  
       }
-      // studySettings.useSpacedRepetition が false の場合、ここでは order やその他の条件を追加しない
 
       const { data, error } = await query; // 構築されたクエリを実行
 
@@ -153,11 +160,9 @@ export default function TestPage() {
         setWords([]);
         return;
       }
-
       await fetchTestData(wordbookIds);
     };
     
-
     if (wordbookIds.length > 0) {
         loadData();
     } else {
@@ -165,44 +170,44 @@ export default function TestPage() {
     }
   }, [wordbookIds, studySettings.useSpacedRepetition]);
 
-  const getNextReviewDate = (level: number) => {
-    const today = new Date()
-    let days = 1
+  // getNextReviewDate関数を修正：YYYY-MM-DD形式を返すように
+  const getNextReviewDate = (level: number): string => {
+    const date = new Date(); // 新しいDateオブジェクトを作成
+    let days = 1;
     switch (level) {
-      case 0: days = 1; break
-      case 1: days = 2; break
-      case 2: days = 3; break
-      case 3: days = 5; break
-      case 4: days = 7; break
-      case 5: days = 14; break
-      case 6: days = 30; break
-      case 7: days = 90; break
-      case 8: days = 180; break
-      case 9: days = 180; break
-      case 10: days = 180; break
-      default: days = 1
+      case 0: days = 1; break;
+      case 1: days = 2; break;
+      case 2: days = 3; break;
+      case 3: days = 5; break;
+      case 4: days = 7; break;
+      case 5: days = 14; break;
+      case 6: days = 30; break;
+      case 7: days = 90; break;
+      case 8: days = 180; break;
+      case 9: days = 180; break;
+      case 10: days = 180; break;
+      default: days = 1;
     }
-    today.setDate(today.getDate() + days)
-    today.setHours(0, 0, 0, 0); // 時刻を00:00:00.000に設定
-    return today.toISOString()
-  }
+    date.setDate(date.getDate() + days); // 日数を加算
+    // getFormattedDateを使って'YYYY-MM-DD'形式の文字列を返す
+    return getFormattedDate(date); 
+  };
 
   const handleRemember = async () => {
     if (words.length === 0) return;
     const word = words[currentIndex];
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      // startTransition(() => {
-      //   router.push('/login');
-      // });
-      router.push('リターンしちゃった');
+      startTransition(() => {
+        router.push('/login');
+      });
       return;
     }
 
     const currentLevel = progresses[word.word_id] ?? word.level;
     const newLevel = Math.min(currentLevel + 1, 10);
     const nextReview = getNextReviewDate(newLevel);
-    
+
     const targetWordbookId = word.wordbook_id;  
 
     const { error } = await supabase
@@ -213,7 +218,6 @@ export default function TestPage() {
       console.error('Error details:', error.details);  
       console.error('Error message:', error.message);
     }
-    // progresses を更新する際も word.word_id をキーとして使用
     setProgresses((prev) => ({ ...prev, [word.word_id]: newLevel }));
     
     goNext();
@@ -225,13 +229,11 @@ export default function TestPage() {
     const word = words[currentIndex]
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
-      // startTransition(() => {
-      //   router.push('/login');
-      // });
-      router.push('リターンしちゃった');
+      startTransition(() => {
+        router.push('/login');
+      });
       return;
     }
-    // progresses と mistake のキーを word.word_id に変更
     const currentMistake = mistake[word.word_id] ?? 0  
     const newMistake = Math.min(currentMistake + 1, 999)
     
@@ -245,8 +247,8 @@ export default function TestPage() {
       console.error('Error details:', error.details);  
       console.error('Error message:', error.message);
     }
-    setProgresses((prev) => ({ ...prev, [word.word_id]: 0 })) // キーを word.word_id に
-    setMistake((prev) => ({ ...prev, [word.word_id]: newMistake })) // キーを word.word_id に
+    setProgresses((prev) => ({ ...prev, [word.word_id]: 0 }))
+    setMistake((prev) => ({ ...prev, [word.word_id]: newMistake }))
 
     goNext()
   }
@@ -258,7 +260,6 @@ export default function TestPage() {
         setIsFlipped(false);
         return nextIndex;
       } else {
-        // ここで router.push を startTransition でラップする
         startTransition(() => {
           router.push(`/dashboard`);
         });
@@ -284,7 +285,7 @@ export default function TestPage() {
           <p className="text-lg text-gray-500">たまには休んでもいいんですよ。</p>
           <button
             onClick={() => {
-              startTransition(() => { // ここも router.push を startTransition でラップ
+              startTransition(() => {
                 router.push(`/dashboard`);
               });
             }}
@@ -311,7 +312,6 @@ export default function TestPage() {
         </div>
         <div className="flex justify-center mb-8">
           <div
-            // key を word_id に変更
             key={currentWord.word_id}  
             className={`relative w-80 h-48 cursor-pointer perspective`}
             onClick={() => setIsFlipped(f => !f)}
