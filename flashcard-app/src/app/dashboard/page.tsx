@@ -31,6 +31,17 @@ export default function DashboardPage() {
     fetchWordbooks()
   }, [])
 
+  // wordbooksが取得された後にselectedWordbooksを初期化する
+  useEffect(() => {
+    if (wordbooks.length > 0) {
+      const initialSelected = wordbooks.reduce((acc, wordbook) => {
+        acc[wordbook.id] = true; // すべての単語帳を初期値でチェック済みにする
+        return acc;
+      }, {} as Record<string, boolean>);
+      setSelectedWordbooks(initialSelected);
+    }
+  }, [wordbooks]); // wordbooksが変更されたときに実行
+
   const fetchWordbooks = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -96,6 +107,11 @@ export default function DashboardPage() {
       .filter(([_, isSelected]) => isSelected)
       .map(([id]) => id);
 
+    // 選択された単語帳が0個の場合は学習を開始しない
+    if (selectedIds.length === 0) {
+        alert('学習する単語帳を1つ以上選択してください。');
+        return;
+    }
 
     // クエリパラメータを作成
     const queryParams = new URLSearchParams();
@@ -215,7 +231,7 @@ export default function DashboardPage() {
                           <input
                             type="checkbox"
                             id={`wordbook-${wordbook.id}`}
-                            checked={!!selectedWordbooks[wordbook.id]}
+                            checked={!!selectedWordbooks[wordbook.id]} // ここが重要：selectedWordbooksの状態と同期させる
                             onChange={() => toggleWordbook(wordbook.id)}
                             className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                           />
@@ -259,7 +275,7 @@ export default function DashboardPage() {
             {/* 学習開始ボタン */}
             <Button
               onClick={startStudy}
-              disabled={Object.values(selectedWordbooks).filter(Boolean).length === 0}
+              disabled={Object.values(selectedWordbooks).filter(Boolean).length === 0} // 単語帳が1つも選択されていない場合に無効
               className="w-full text-base"
             >
               学習を開始する
@@ -269,4 +285,4 @@ export default function DashboardPage() {
       </main>
     </div>
   )
-} 
+}

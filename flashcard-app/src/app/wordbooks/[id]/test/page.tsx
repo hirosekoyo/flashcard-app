@@ -46,8 +46,6 @@ export default function TestPage() {
     const idsQuery = searchParams.get('ids')
     const frontToBackQuery = searchParams.get('frontToBack')
     const useSpacedRepetitionQuery = searchParams.get('useSpacedRepetition')
-    console.log("frontToBackQuery:", frontToBackQuery)
-    console.log("useSpacedRepetitionQuery:", useSpacedRepetitionQuery)
 
     if (idsQuery) {
       setWordbookIds(idsQuery.split(','))
@@ -277,8 +275,6 @@ const fetchTestData = async (wordbookIds: string[]) => {
   }
 
   const currentWord = words[currentIndex]
-  console.log("Current Word:", currentWord); 
-  // currentWord.words.front / back に変更
   const frontContent = studySettings.frontToBack ? currentWord.words.front : currentWord.words.back;
   const backContent = studySettings.frontToBack ? currentWord.words.back : currentWord.words.front;
 
