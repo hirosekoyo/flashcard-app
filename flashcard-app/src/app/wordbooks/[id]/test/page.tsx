@@ -7,10 +7,16 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
 interface Word {
-  id: string
-  front: string
-  back: string
-  wordbook_id: string
+  word_id: string; // word_id を ID として使用
+  level: number;
+  mistake_count: number;
+  next_review_at: string | null; // ISO 8601形式の文字列と仮定 (時刻情報も含む可能性) または null
+  wordbook_id: string;
+  // Supabase の結合結果を考慮し、words は単一オブジェクトとしてネストされると想定
+  words: { 
+    front: string;
+    back: string;
+  };
 }
 
 interface StudySettings {
@@ -26,18 +32,22 @@ export default function TestPage() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [isFlipped, setIsFlipped] = useState(false)
-  const [progresses, setProgresses] = useState<Record<string, number>>({})
+  // word.word_id をキーとして使用
+  const [progresses, setProgresses] = useState<Record<string, number>>({}) 
   const [mistake, setMistake] = useState<Record<string, number>>({})
   const [studySettings, setStudySettings] = useState<StudySettings>({
     frontToBack: true,
-    useSpacedRepetition: false,
+    useSpacedRepetition: true,
   })
   const [wordbookIds, setWordbookIds] = useState<string[]>([])
+
 
   useEffect(() => {
     const idsQuery = searchParams.get('ids')
     const frontToBackQuery = searchParams.get('frontToBack')
     const useSpacedRepetitionQuery = searchParams.get('useSpacedRepetition')
+    console.log("frontToBackQuery:", frontToBackQuery)
+    console.log("useSpacedRepetitionQuery:", useSpacedRepetitionQuery)
 
     if (idsQuery) {
       setWordbookIds(idsQuery.split(','))
@@ -49,80 +59,108 @@ export default function TestPage() {
     })
   }, [searchParams])
 
-  const fetchWords = async (ids: string[]) => {
-    if (ids.length === 0) {
-      setWords([])
-      return []
-    }
-    try {
-      const { data, error } = await supabase
-        .from('words')
-        .select('*')
-        .in('wordbook_id', ids)
-        .order('created_at', { ascending: true })
-
-      if (error) throw error
-
-      const shuffledWords = data ? [...data].sort(() => Math.random() - 0.5) : []
-      setWords(shuffledWords)
-      return shuffledWords
-
-    } catch (error) {
-      console.error('Error fetching words:', error)
-      setWords([])
-      return []
-    }
+  // Helper function to get start of today in ISO string
+  const getStartOfTodayISO = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // 時刻を00:00:00.000に設定
+    return today.toISOString();
   }
 
-  const fetchProgress = async (fetchedWords: Word[]) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const wordIds = fetchedWords.map(w => w.id)
-      if (wordIds.length === 0) {
-        setProgresses({})
-        setMistake({})
-        return
-      }
-
-      const { data, error } = await supabase
-        .from('learning_progress')
-        .select('word_id, level, mistake_count')
-        .eq('user_id', user.id)
-        .in('word_id', wordIds)
-      if (error) throw error
-
-      const Pmap: Record<string, number> = {}
-      data?.forEach((row: any) => { Pmap[row.word_id] = row.level })
-      setProgresses(Pmap)
-
-      const Mmap: Record<string, number> = {}
-      data?.forEach((row: any) => { Mmap[row.word_id] = row.mistake_count })
-      setMistake(Mmap)
-
-    } catch (e) {
-      console.error('Error fetching progress:', e)
+// fetchTestData 関数内
+const fetchTestData = async (wordbookIds: string[]) => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setWords([]);
+      setLoading(false);
+      return; 
     }
+    
+    let query = supabase
+      .from('learning_progress')
+      .select(`
+        word_id,
+        level,
+        mistake_count,
+        next_review_at,
+        wordbook_id,
+        words!inner(front, back)
+      `)
+      .in('wordbook_id', wordbookIds); // どちらのケースでも wordbook_id でフィルタリングは必要
+
+    // studySettings.useSpacedRepetition の値に応じてクエリを分岐
+    if (studySettings.useSpacedRepetition) {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+
+      query = query
+        .or(`next_review_at.lte.${startOfToday.toISOString()},next_review_at.is.null`)
+        .order('next_review_at', { ascending: true }) 
+        .order('mistake_count', { ascending: false }); 
+    } else {
+      // スペース反復がオフの場合、ランダムにシャッフル
+      query = query.order('random()'); 
+    }
+    console.log("query:", query)
+    const { data, error } = await query; // 構築されたクエリを実行
+
+    if (error) {
+      console.error('Error fetching test data:', error);
+      setWords([]);
+      setLoading(false);
+      return;
+    }
+
+    if (!data) {
+      setWords([]);
+      setLoading(false);
+      return;
+    }
+
+    const transformedWords: Word[] = data.map((item: any) => {
+      const wordsData = item.words; 
+      return {
+        word_id: item.word_id,
+        level: item.level,
+        mistake_count: item.mistake_count,
+        next_review_at: item.next_review_at,
+        wordbook_id: item.wordbook_id,
+        words: { 
+          front: wordsData?.front || '', 
+          back: wordsData?.back || ''    
+        }
+      };
+    });
+    
+    setWords(transformedWords); 
+    setLoading(false);
+    
+  } catch (error) {
+    console.error('Catch Error fetching test data:', error);
+    setWords([]);
+    setLoading(false);
   }
+};
 
   useEffect(() => {
     const loadData = async () => {
       if (wordbookIds.length === 0) {
-        setLoading(false)
-        setWords([])
-        return
+        setLoading(false);
+        setWords([]);
+        return;
       }
-      setLoading(true)
-      const fetchedWordsData = await fetchWords(wordbookIds)
-      if (fetchedWordsData.length > 0) {
-        await fetchProgress(fetchedWordsData)
-      }
-      setLoading(false)
+      setLoading(true); // ロード開始
+      await fetchTestData(wordbookIds); 
+      // fetchTestData内でsetLoading(false)を呼ぶので、ここでの追加のsetLoading(false)は不要
+    };
+    
+    // wordbookIds が変更された場合にのみ実行（初回ロード時も含む）
+    if (wordbookIds.length > 0) {
+        loadData();
+    } else {
+        setLoading(false); // IDsがない場合はローディングを終了
     }
-
-    loadData()
-  }, [wordbookIds])
+  }, [wordbookIds, studySettings.useSpacedRepetition]);
 
   const getNextReviewDate = (level: number) => {
     const today = new Date()
@@ -142,7 +180,8 @@ export default function TestPage() {
       default: days = 1
     }
     today.setDate(today.getDate() + days)
-    return today.toISOString().split('T')[0]
+    today.setHours(0, 0, 0, 0); // 時刻を00:00:00.000に設定
+    return today.toISOString()
   }
 
   const handleRemember = async () => {
@@ -150,16 +189,23 @@ export default function TestPage() {
     const word = words[currentIndex]
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const currentLevel = progresses[word.id] ?? 0
+    // progresses と mistake のキーを word.word_id に変更
+    const currentLevel = progresses[word.word_id] ?? 0 
     const newLevel = Math.min(currentLevel + 1, 10)
     const nextReview = getNextReviewDate(newLevel)
+    
+    const targetWordbookId = word.wordbook_id; 
+
     const { error } = await supabase
       .from('learning_progress')
-      .upsert({ user_id: user.id, word_id: word.id, level: newLevel, next_review_at: nextReview, mistake_count: mistake[word.id] ?? 0 }, { onConflict: 'user_id,word_id' })
+      .upsert({ user_id: user.id, wordbook_id: targetWordbookId, word_id: word.word_id, level: newLevel, next_review_at: nextReview, mistake_count: mistake[word.word_id] ?? 0 }, { onConflict: 'user_id,word_id,wordbook_id' })
     if (error) {
       console.error('upsert error (handleRemember):', error)
+      console.error('Error details:', error.details); 
+      console.error('Error message:', error.message);
     }
-    setProgresses((prev) => ({ ...prev, [word.id]: newLevel }))
+    setProgresses((prev) => ({ ...prev, [word.word_id]: newLevel })) // キーを word.word_id に
+    
     goNext()
   }
 
@@ -168,16 +214,23 @@ export default function TestPage() {
     const word = words[currentIndex]
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    const currentMistake = mistake[word.id] ?? 0
+    // progresses と mistake のキーを word.word_id に変更
+    const currentMistake = mistake[word.word_id] ?? 0 
     const newMistake = Math.min(currentMistake + 1, 999)
+    
+    const targetWordbookId = word.wordbook_id; 
+
     const { error } = await supabase
       .from('learning_progress')
-      .upsert({ user_id: user.id, word_id: word.id, level: 0, next_review_at: '2100-01-01', mistake_count: newMistake }, { onConflict: 'user_id,word_id' })
+      .upsert({ user_id: user.id, wordbook_id: targetWordbookId, word_id: word.word_id, level: 0, next_review_at: null, mistake_count: newMistake }, { onConflict: 'user_id,word_id,wordbook_id' }) 
     if (error) {
       console.error('upsert error (handleForget):', error)
+      console.error('Error details:', error.details); 
+      console.error('Error message:', error.message);
     }
-    setProgresses((prev) => ({ ...prev, [word.id]: 0 }))
-    setMistake((prev) => ({ ...prev, [word.id]: newMistake }))
+    setProgresses((prev) => ({ ...prev, [word.word_id]: 0 })) // キーを word.word_id に
+    setMistake((prev) => ({ ...prev, [word.word_id]: newMistake })) // キーを word.word_id に
+
     goNext()
   }
 
@@ -185,15 +238,14 @@ export default function TestPage() {
     setCurrentIndex(prevIndex => {
       const nextIndex = prevIndex + 1;
       if (nextIndex < words.length) {
-        setIsFlipped(false); // 次のカードへ進む前に裏返し状態をリセット
+        setIsFlipped(false);
         return nextIndex;
       } else {
         router.push(`/dashboard`);
-        return prevIndex; // 最終カードの場合はインデックスを変えない
+        return prevIndex;
       }
     });
   };
-
 
   if (loading) {
     return (
@@ -207,7 +259,9 @@ export default function TestPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-lg text-gray-500">単語が登録されていません</p>
+          <p className="text-lg text-gray-500">今日のノルマもまだ覚えていない単語もありません</p>
+          <p className="text-lg text-gray-500">それでも学習したいあなたは、グングンモードをOFFにしてテストしてください</p>
+          <p className="text-lg text-gray-500">たまには休んでもいいんですよ。</p>
           <button
             onClick={() => router.push(`/dashboard`)}
             className="mt-4 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -220,8 +274,10 @@ export default function TestPage() {
   }
 
   const currentWord = words[currentIndex]
-  const frontContent = studySettings.frontToBack ? currentWord.front : currentWord.back;
-  const backContent = studySettings.frontToBack ? currentWord.back : currentWord.front;
+  console.log("Current Word:", currentWord); 
+  // currentWord.words.front / back に変更
+  const frontContent = studySettings.frontToBack ? currentWord.words.front : currentWord.words.back;
+  const backContent = studySettings.frontToBack ? currentWord.words.back : currentWord.words.front;
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -232,9 +288,9 @@ export default function TestPage() {
           </p>
         </div>
         <div className="flex justify-center mb-8">
-          {/* key を currentIndex または currentWord.id に設定して再マウントを強制 */}
           <div
-            key={currentWord.id} // ← ここに key を追加
+            // key を word_id に変更
+            key={currentWord.word_id} 
             className={`relative w-80 h-48 cursor-pointer perspective`}
             onClick={() => setIsFlipped(f => !f)}
           >

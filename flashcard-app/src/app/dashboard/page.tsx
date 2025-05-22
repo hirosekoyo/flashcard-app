@@ -241,15 +241,15 @@ export default function DashboardPage() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-sm font-medium text-gray-900">表→裏表示</span>
-                    <p className="text-sm text-gray-500">表面から裏面を当てる学習方法に切り替えます</p>
+                    <span className="text-sm font-medium text-gray-900">表⇔裏</span>
+                    <p className="text-sm text-gray-500">ON:表⇒裏 OFF:裏⇒表</p>
                   </div>
                   <Switch checked={studySettings.frontToBack} onCheckedChange={() => setStudySettings({ ...studySettings, frontToBack: !studySettings.frontToBack })} />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-sm font-medium text-gray-900">忘却曲線順</span>
-                    <p className="text-sm text-gray-500">忘却曲線に沿った出題順にします</p>
+                    <span className="text-sm font-medium text-gray-900">グングンモード</span>
+                    <p className="text-sm text-gray-500">忘却曲線に沿って出題する、あなた専用のモードです</p>
                   </div>
                   <Switch checked={studySettings.useSpacedRepetition} onCheckedChange={() => setStudySettings({ ...studySettings, useSpacedRepetition: !studySettings.useSpacedRepetition })} />
                 </div>
