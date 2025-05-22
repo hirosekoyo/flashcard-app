@@ -137,46 +137,46 @@ export default function WordbookDetailPage() {
       const newWords = editWords.filter(w => !w.id && w.front && w.back)
       const updatedWords = editWords.filter(w => w.id && (w.front !== words.find(ow => ow.id === w.id)?.front || w.back !== words.find(ow => ow.id === w.id)?.back))
       const deletedIds = existingIds.filter(id => !editWords.find(w => w.id === id))
-// 追加
-if (newWords.length > 0) {
-  // 単語
-  const { data: insertedWords, error: addErrorW } = await supabase
-    .from('words')
-    .insert(newWords.map(w => ({ ...w, wordbook_id: params.id })))
-    .select('id') // ここで挿入された単語のIDを取得することが重要
-  
-  if (addErrorW) throw addErrorW
+      // 追加
+      if (newWords.length > 0) {
+        // 単語
+        const { data: insertedWords, error: addErrorW } = await supabase
+          .from('words')
+          .insert(newWords.map(w => ({ ...w, wordbook_id: params.id })))
+          .select('id') // ここで挿入された単語のIDを取得することが重要
 
-  // 挿入された単語のIDがない場合は処理を中断
-  if (!insertedWords || insertedWords.length === 0) {
-    console.warn("新しい単語は挿入されましたが、IDが返されませんでした。学習進捗は追加されません。");
-    // 必要に応じてエラーをthrowするか、単に警告ログを出すか選択
-    // throw new Error("挿入された単語のIDが取得できませんでした。"); 
-  }
+        if (addErrorW) throw addErrorW
 
-  // 学習進捗
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    console.warn("ユーザーがログインしていません。学習進捗は追加されません。");
-    return;
-  }
+        // 挿入された単語のIDがない場合は処理を中断
+        if (!insertedWords || insertedWords.length === 0) {
+          console.warn("新しい単語は挿入されましたが、IDが返されませんでした。学習進捗は追加されません。");
+          // 必要に応じてエラーをthrowするか、単に警告ログを出すか選択
+          // throw new Error("挿入された単語のIDが取得できませんでした。"); 
+        }
 
-  // 各新しい単語ごとに学習進捗レコードを作成
-  const progressRecords = insertedWords.map(insertedWord => ({ // insertedWords を使う
-    user_id: user.id,
-    word_id: insertedWord.id, // 挿入された単一の単語ID
-    wordbook_id: params.id, // 進捗にも単語帳IDを持たせる場合
-    level: 0, // 初期レベル
-    mistake_count: 0, // 初期間違い回数
-    next_review_at: null, // 初期レビュー日を今日に設定
-  }));
+        // 学習進捗
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          console.warn("ユーザーがログインしていません。学習進捗は追加されません。");
+          return;
+        }
 
-  const { error: addErrorP } = await supabase
-    .from('learning_progress')
-    .insert(progressRecords) // 複数のレコードをまとめて挿入
+        // 各新しい単語ごとに学習進捗レコードを作成
+        const progressRecords = insertedWords.map(insertedWord => ({ // insertedWords を使う
+          user_id: user.id,
+          word_id: insertedWord.id, // 挿入された単一の単語ID
+          wordbook_id: params.id, // 進捗にも単語帳IDを持たせる場合
+          level: 0, // 初期レベル
+          mistake_count: 0, // 初期間違い回数
+          next_review_at: null,
+        }));
 
-  if (addErrorP) throw addErrorP
-}
+        const { error: addErrorP } = await supabase
+          .from('learning_progress')
+          .insert(progressRecords) // 複数のレコードをまとめて挿入
+
+        if (addErrorP) throw addErrorP
+      }
       // 更新
       for (const w of updatedWords) {
         const { error: upError } = await supabase
@@ -335,7 +335,7 @@ if (newWords.length > 0) {
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">単語帳編集</h1>
         <div className="flex space-x-2">
-{/* ひろせ　ダイアログコンポーネントをつかう */}
+          {/* ひろせ　ダイアログコンポーネントをつかう */}
           <Dialog open={deleteWordbookDialogOpen} onOpenChange={setDeleteWordbookDialogOpen}>
             <DialogTrigger asChild>
               <Button type="button" variant="destructive" size="sm">単語帳を削除する</Button>
