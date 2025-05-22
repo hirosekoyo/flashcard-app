@@ -313,10 +313,17 @@ export default function TestPage() {
             {/* 進捗表示の条件分岐 */}
             {studySettings.useSpacedRepetition ? (
               <>
-              今日のノルマは<span className="text-3xl font-bold text-blue-600">{todayReviewWordsCount}</span>枚です！
-              <br />
-              {currentIndex + 1} / {words.length}
-              </> 
+                {/* currentIndex + 1 が todayReviewWordsCount を超えた場合に「ノルマ達成！」を表示 */}
+                {currentIndex + 1 > todayReviewWordsCount && todayReviewWordsCount > 0 ? (
+                  <span className="text-lg font-bold text-green-600">ノルマ達成！</span>
+                ) : (
+                  <>
+                    今日のノルマは<span className="text-3xl font-bold text-blue-600">{todayReviewWordsCount}</span>枚です！
+                  </>
+                )}
+                <br />
+                {currentIndex + 1} / {words.length}
+              </>
             ) : (
               <>{currentIndex + 1} / {words.length}</>
             )}
