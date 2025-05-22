@@ -86,9 +86,9 @@ const fetchTestData = async (wordbookIds: string[]) => {
         wordbook_id,
         words!inner(front, back)
       `)
-      .in('wordbook_id', wordbookIds); // どちらのケースでも wordbook_id でフィルタリングは必要
+      .in('wordbook_id', wordbookIds); 
 
-    // studySettings.useSpacedRepetition の値に応じてクエリを分岐
+    // スペース反復が有効な場合のみ、追加のフィルタとソートを適用
     if (studySettings.useSpacedRepetition) {
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
@@ -97,11 +97,9 @@ const fetchTestData = async (wordbookIds: string[]) => {
         .or(`next_review_at.lte.${startOfToday.toISOString()},next_review_at.is.null`)
         .order('next_review_at', { ascending: true }) 
         .order('mistake_count', { ascending: false }); 
-    } else {
-      // スペース反復がオフの場合、ランダムにシャッフル
-      query = query.order('random()'); 
     }
-    console.log("query:", query)
+    // studySettings.useSpacedRepetition が false の場合、ここでは order やその他の条件を追加しない
+
     const { data, error } = await query; // 構築されたクエリを実行
 
     if (error) {
@@ -117,7 +115,7 @@ const fetchTestData = async (wordbookIds: string[]) => {
       return;
     }
 
-    const transformedWords: Word[] = data.map((item: any) => {
+    let transformedWords: Word[] = data.map((item: any) => {
       const wordsData = item.words; 
       return {
         word_id: item.word_id,
@@ -132,6 +130,11 @@ const fetchTestData = async (wordbookIds: string[]) => {
       };
     });
     
+    // スペース反復がオフの場合、クライアント側でシャッフル
+    if (!studySettings.useSpacedRepetition) {
+      transformedWords = transformedWords.sort(() => Math.random() - 0.5);
+    }
+
     setWords(transformedWords); 
     setLoading(false);
     
