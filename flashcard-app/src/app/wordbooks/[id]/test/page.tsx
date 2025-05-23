@@ -305,7 +305,7 @@ export default function TestPage() {
         <div className="text-center mb-8">
           <p className="text-sm text-gray-500">
             {/* 進捗表示の条件分岐 */}
-            {studySettings.useSpacedRepetition ? (
+            {studySettings.useSpacedRepetition && todayReviewWordsCount > 0 ? (
               <>
                 {/* currentIndex + 1 が todayReviewWordsCount を超えた場合に「ノルマ達成！」を表示 */}
                 {currentIndex + 1 > todayReviewWordsCount && todayReviewWordsCount > 0 ? (
