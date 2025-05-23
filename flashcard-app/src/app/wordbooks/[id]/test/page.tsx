@@ -38,7 +38,6 @@ export default function TestPage() {
     useSpacedRepetition: true,
   })
   const [wordbookIds, setWordbookIds] = useState<string[]>([])
-  // 今日のレビュー対象となる単語数を保持するstateを追加
   const [todayReviewWordsCount, setTodayReviewWordsCount] = useState(0);
 
 
@@ -57,23 +56,20 @@ export default function TestPage() {
     })
   }, [searchParams])
 
-  // Dateオブジェクトから'YYYY-MM-DD'形式の文字列を生成する
   const getFormattedDate = (date: Date): string => {
     const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0'); // 月は0から始まるため+1
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
     const day = date.getDate().toString().padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
 
-  // 今日の日付を'YYYY-MM-DD'形式の文字列で取得する
   const getTodayDateString = (): string => {
     const today = new Date();
     return getFormattedDate(today);
   };
 
-  // fetchTestData 関数内
   const fetchTestData = async (wordbookIds: string[]) => {
-    setLoading(true); // フェッチ開始時にローディングを設定
+    setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -100,7 +96,6 @@ export default function TestPage() {
       if (studySettings.useSpacedRepetition) {
         const todayDateString = getTodayDateString();
         
-        // フィルタリングは next_review_at が今日以前かnullの単語を対象にする
         query = query
           .or(`next_review_at.lte.${todayDateString},next_review_at.is.null`)
           .order('next_review_at', { ascending: true })  
@@ -140,8 +135,6 @@ export default function TestPage() {
       if (!studySettings.useSpacedRepetition) {
         transformedWords = transformedWords.sort(() => Math.random() - 0.5);
       } else {
-        // スペース反復が有効な場合
-        // next_review_at が今日以前の単語のみをカウント
         const todayDateString = getTodayDateString();
         const count = transformedWords.filter(word => 
           word.next_review_at !== null && word.next_review_at <= todayDateString
@@ -172,7 +165,7 @@ export default function TestPage() {
     if (wordbookIds.length > 0) {
         loadData();
     } else {
-        setLoading(false); // IDsがない場合はローディングを終了
+        setLoading(false);
     }
   }, [wordbookIds, studySettings.useSpacedRepetition]);
 
@@ -272,6 +265,7 @@ export default function TestPage() {
     });
   };
 
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -285,7 +279,7 @@ export default function TestPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-lg text-gray-500">今日のノルマもまだ覚えていない単語もありません</p>
-          <p className="text-lg text-gray-500">それでも学習したいあなたは、グングンモードをOFFにしてテストしてください</p>
+          <p className="text-lg text-gray-500">それでも学習したいときは、グングンモードをOFFにしてテストしてください</p>
           <button
             onClick={() => {
               startTransition(() => {
@@ -319,6 +313,8 @@ export default function TestPage() {
                 ) : (
                   <>
                     今日のノルマは<span className="text-3xl font-bold text-blue-600">{todayReviewWordsCount}</span>枚です！
+                    <br />
+                    学習レベル<span className="text-3xl font-bold text-blue-600">{currentWord.level}</span>
                   </>
                 )}
                 <br />
