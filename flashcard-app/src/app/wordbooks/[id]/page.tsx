@@ -25,7 +25,6 @@ interface Word {
   front: string
   back: string
   created_at: string
-  level?: number // learning_progressから取得する場合のためにオプショナルにする
 }
 
 interface Wordbook {
@@ -44,12 +43,12 @@ export default function WordbookDetailPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
-  const [editWords, setEditWords] = useState<{ id?: string, front: string, back: string, level?: number }[]>([]) 
+  const [editWords, setEditWords] = useState<{ id?: string, front: string, back: string }[]>([])
   const [saving, setSaving] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [importText, setImportText] = useState('');
   const [importDelimiter, setImportDelimiter] = useState('tab');
-  const [splitByNewline, setSplitByNewline] = useState(true);
+  const [splitByNewline, setSplitByNewline] = useState(true); // 改行で分割するかどうかの状態
   const [deleteWordbookDialogOpen, setDeleteWordbookDialogOpen] = useState(false);
 
   useEffect(() => {
@@ -59,8 +58,7 @@ export default function WordbookDetailPage() {
 
   useEffect(() => {
     if (wordbook) setEditTitle(wordbook.title)
-    // words のデータが更新されたら editWords も更新
-    if (words) setEditWords(words.map(w => ({ id: w.id, front: w.front, back: w.back, level: w.level })))
+    if (words) setEditWords(words.map(w => ({ id: w.id, front: w.front, back: w.back })))
   }, [wordbook, words])
 
   const fetchWordbook = async () => {
@@ -81,36 +79,14 @@ export default function WordbookDetailPage() {
 
   const fetchWords = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setError('ユーザーがログインしていません。');
-        setLoading(false);
-        return;
-      }
-
       const { data, error } = await supabase
-        .from('learning_progress')
-        .select(`
-          word_id,
-          level,
-          words!inner(id, front, back, created_at)
-        `)
-        .eq('user_id', user.id) // ユーザーIDでフィルタリング
-        .eq('wordbook_id', params.id) // 単語帳IDでフィルタリング
-        .order('level', { ascending: false }); // levelが高い順にソート
+        .from('words')
+        .select('*')
+        .eq('wordbook_id', params.id)
+        .order('created_at', { ascending: true })
 
       if (error) throw error
-
-      // 取得したデータをWordインターフェースに合うように変換
-      const transformedWords: Word[] = data?.map((item: any) => ({
-        id: item.words.id,
-        front: item.words.front,
-        back: item.words.back,
-        created_at: item.words.created_at,
-        level: item.level, // level を追加
-      })) || [];
-
-      setWords(transformedWords);
+      setWords(data || [])
     } catch (error) {
       console.error('Error fetching words:', error)
       setError('単語の取得に失敗しました')
@@ -121,35 +97,15 @@ export default function WordbookDetailPage() {
 
   const handleDeleteWord = async () => {
     if (!deleteTargetId) return
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setError('ユーザーがログインしていません。');
-      setDeleteDialogOpen(false);
-      return;
-    }
-
     try {
-      // 1. learning_progress テーブルから削除
-      const { error: lpError } = await supabase
-        .from('learning_progress')
-        .delete()
-        .eq('word_id', deleteTargetId)
-        .eq('user_id', user.id)
-        .eq('wordbook_id', params.id); // wordbook_idも条件に加える
-
-      if (lpError) throw lpError;
-
-      // 2. words テーブルから削除
-      const { error: wordsError } = await supabase
+      const { error } = await supabase
         .from('words')
         .delete()
         .eq('id', deleteTargetId)
-
-      if (wordsError) throw wordsError;
-
-      setDeleteDialogOpen(false);
-      setDeleteTargetId(null);
-      fetchWords(); 
+      if (error) throw error
+      setDeleteDialogOpen(false)
+      setDeleteTargetId(null)
+      fetchWords()
     } catch (error) {
       console.error('Error deleting word:', error)
       setError('単語の削除に失敗しました')
@@ -166,15 +122,8 @@ export default function WordbookDetailPage() {
     e.preventDefault()
     setSaving(true)
     setError(null)
-    setSaveSuccess(false);
+    setSaveSuccess(false); // 保存開始時に成功メッセージをリセット
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setError("ユーザーがログインしていません。");
-        setSaving(false);
-        return;
-      }
-
       // タイトル更新
       if (editTitle !== wordbook?.title) {
         const { error: tError } = await supabase
@@ -183,38 +132,48 @@ export default function WordbookDetailPage() {
           .eq('id', params.id)
         if (tError) throw tError
       }
-
       // 単語の更新
       const existingIds = words.map(w => w.id)
       const newWords = editWords.filter(w => !w.id && w.front && w.back)
       const updatedWords = editWords.filter(w => w.id && (w.front !== words.find(ow => ow.id === w.id)?.front || w.back !== words.find(ow => ow.id === w.id)?.back))
       const deletedIds = existingIds.filter(id => !editWords.find(w => w.id === id))
-
       // 追加
       if (newWords.length > 0) {
+        // 単語
         const { data: insertedWords, error: addErrorW } = await supabase
           .from('words')
-          .insert(newWords.map(w => ({ ...w, wordbook_id: params.id}))) 
-          .select('id')
+          .insert(newWords.map(w => ({ ...w, wordbook_id: params.id })))
+          .select('id') // ここで挿入された単語のIDを取得することが重要
 
         if (addErrorW) throw addErrorW
 
+        // 挿入された単語のIDがない場合は処理を中断
         if (!insertedWords || insertedWords.length === 0) {
           console.warn("新しい単語は挿入されましたが、IDが返されませんでした。学習進捗は追加されません。");
+          // 必要に応じてエラーをthrowするか、単に警告ログを出すか選択
+          // throw new Error("挿入された単語のIDが取得できませんでした。"); 
         }
 
-        const progressRecords = insertedWords.map(insertedWord => ({
+        // 学習進捗
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          console.warn("ユーザーがログインしていません。学習進捗は追加されません。");
+          return;
+        }
+
+        // 各新しい単語ごとに学習進捗レコードを作成
+        const progressRecords = insertedWords.map(insertedWord => ({ // insertedWords を使う
           user_id: user.id,
-          word_id: insertedWord.id,
-          wordbook_id: params.id,
-          level: 0,
-          mistake_count: 0,
+          word_id: insertedWord.id, // 挿入された単一の単語ID
+          wordbook_id: params.id, // 進捗にも単語帳IDを持たせる場合
+          level: 0, // 初期レベル
+          mistake_count: 0, // 初期間違い回数
           next_review_at: null,
         }));
 
         const { error: addErrorP } = await supabase
           .from('learning_progress')
-          .insert(progressRecords)
+          .insert(progressRecords) // 複数のレコードをまとめて挿入
 
         if (addErrorP) throw addErrorP
       }
@@ -228,28 +187,17 @@ export default function WordbookDetailPage() {
       }
       // 削除
       if (deletedIds.length > 0) {
-        // learning_progress から先に削除
-        const { error: delLpError } = await supabase
-          .from('learning_progress')
-          .delete()
-          .in('word_id', deletedIds)
-          .eq('user_id', user.id)
-          .eq('wordbook_id', params.id);
-
-        if (delLpError) throw delLpError;
-
-        // words から削除
-        const { error: delWordsError } = await supabase
+        const { error: delError } = await supabase
           .from('words')
           .delete()
           .in('id', deletedIds)
-        if (delWordsError) throw delWordsError
+        if (delError) throw delError
       }
       fetchWordbook()
       fetchWords()
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 2000);
+      await new Promise(resolve => setTimeout(resolve, 500)); // 意図的な遅延 (例)
+      setSaveSuccess(true); // 保存成功
+      setTimeout(() => setSaveSuccess(false), 2000); // 2秒後に成功メッセージを消す
     } catch (error: any) {
       setError(error.message)
     } finally {
@@ -261,6 +209,7 @@ export default function WordbookDetailPage() {
     if (!importText) return;
 
     const separator = importDelimiter === 'tab' ? '\t' : ',';
+    // const lines = splitByNewline ? importText.split('\n') : [importText];　ひろせ
     const lines = splitByNewline ? importText.split(/\r\n|\r|\n/) : [importText];
     let newWords: string[] = [];
     let inQuote = false;
@@ -271,16 +220,17 @@ export default function WordbookDetailPage() {
       parts.forEach(part => {
         const trimmedPart = part.trim();
         if (inQuote) {
-          currentWord += trimmedPart;
+          // currentWord += separator + trimmedPart; // 区切り文字を保持　ひろせ
+          currentWord += trimmedPart; // 区切り文字を保持しない
           if (trimmedPart.endsWith('"')) {
             inQuote = false;
-            newWords.push(currentWord.slice(0, -1));
+            newWords.push(currentWord.slice(0, -1)); // 最後の " を除く
             currentWord = '';
           }
         } else {
           if (trimmedPart.startsWith('"')) {
             inQuote = true;
-            currentWord = trimmedPart.slice(1);
+            currentWord = trimmedPart.slice(1); // 最初の " を除く
             if (trimmedPart.endsWith('"')) {
               inQuote = false;
               newWords.push(currentWord.slice(0, -1));
@@ -292,9 +242,10 @@ export default function WordbookDetailPage() {
         }
       });
       if (inQuote) {
-        currentWord += '\n';
+        currentWord += '\n'; // 行が終わってもクオートが閉じられていない場合は改行を保持
       }
     });
+
 
     const newWordPairs: { id?: string, front: string, back: string }[] = [];
     for (let i = 0; i < newWords.length; i += 2) {
@@ -305,6 +256,7 @@ export default function WordbookDetailPage() {
       }
     }
 
+    // 重複をチェック（frontとbackの組み合わせで比較）
     const existingWordSet = new Set(editWords.map(w => `${w.front.trim()}-${w.back.trim()}`));
     const uniqueNewWordPairs = newWordPairs.filter(pair => {
       const key = `${pair.front.trim()}-${pair.back.trim()}`;
@@ -352,43 +304,26 @@ export default function WordbookDetailPage() {
 
   const handleRemoveWordbook = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setError('ユーザーがログインしていません。');
-        setDeleteWordbookDialogOpen(false);
-        return;
-      }
-
-      // まず、関連する学習進捗データを削除する
-      const { error: deleteProgressError } = await supabase
-        .from('learning_progress')
-        .delete()
-        .eq('wordbook_id', params.id)
-        .eq('user_id', user.id);
-
-      if (deleteProgressError) throw deleteProgressError;
-
-      // 次に、関連する単語を削除する
+      // まず、関連する単語を削除する
       const { error: deleteWordsError } = await supabase
         .from('words')
         .delete()
-        .eq('wordbook_id', params.id)
+        .eq('wordbook_id', params.id);
 
       if (deleteWordsError) throw deleteWordsError;
 
-      // 最後に、単語帳自体を削除する
+      // 次に、単語帳自体を削除する
       const { error: deleteWordbookError } = await supabase
         .from('wordbooks')
         .delete()
-        .eq('id', params.id)
-        .eq('user_id', user.id); // user_id を条件に追加
+        .eq('id', params.id);
 
       if (deleteWordbookError) throw deleteWordbookError;
 
       router.push('/dashboard');
     } catch (error: any) {
-      console.error('Error deleting wordbook and associated data:', error);
-      setError('単語帳と関連するデータの削除に失敗しました');
+      console.error('Error deleting wordbook and associated words:', error);
+      setError('単語帳と関連する単語の削除に失敗しました');
     } finally {
       setDeleteWordbookDialogOpen(false);
     }
@@ -399,7 +334,8 @@ export default function WordbookDetailPage() {
       <Header showBackButton backUrl="/dashboard" />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">単語帳編集</h1>
-        <div className="flex space-x-2 mb-4"> {/* mb-4 を追加して下のフォームとの間にスペースを設ける */}
+        <div className="flex space-x-2">
+          {/* ひろせ　ダイアログコンポーネントをつかう */}
           <Dialog open={deleteWordbookDialogOpen} onOpenChange={setDeleteWordbookDialogOpen}>
             <DialogTrigger asChild>
               <Button type="button" variant="destructive" size="sm">単語帳を削除する</Button>
@@ -408,7 +344,7 @@ export default function WordbookDetailPage() {
               <DialogHeaderUI>
                 <DialogTitleUI>単語帳の削除</DialogTitleUI>
                 <DialogDescription>
-                  本当にこの単語帳を削除しますか？削除すると、単語帳に含まれる全ての単語と学習進捗も削除されます。この操作は取り消せません。
+                  本当にこの単語帳を削除しますか？削除すると、単語帳に含まれる全ての単語も削除されます。この操作は取り消せません。
                 </DialogDescription>
               </DialogHeaderUI>
               <DialogFooter>
@@ -442,27 +378,14 @@ export default function WordbookDetailPage() {
                     placeholder="表面 (例: apple)"
                     value={word.front}
                     onChange={e => handleWordChange(idx, 'front', e.target.value)}
-                    className="flex-1"
                   />
                   <Input
                     type="text"
                     placeholder="裏面 (例: りんご)"
                     value={word.back}
                     onChange={e => handleWordChange(idx, 'back', e.target.value)}
-                    className="flex-1"
                   />
-                  {/* 学習レベル表示 */}
-                    <span className="text-sm text-gray-600 w-24 text-right">レベル:  {word.level ?? 0}</span>
-                  
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleRemoveWord(idx)}
-                    disabled={editWords.length === 1} 
-                  >
-                    削除
-                  </Button>
+                  <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveWord(idx)} disabled={editWords.length === 1}>削除</Button>
                 </div>
               ))}
               <Button type="button" variant="secondary" size="sm" onClick={handleAddWord}>単語を追加</Button>
@@ -526,3 +449,4 @@ export default function WordbookDetailPage() {
     </div>
   )
 }
+
