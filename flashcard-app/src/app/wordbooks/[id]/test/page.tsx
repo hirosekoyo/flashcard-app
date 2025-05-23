@@ -278,8 +278,8 @@ export default function TestPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-lg text-gray-500">今日のノルマもまだ覚えていない単語もありません</p>
-          <p className="text-lg text-gray-500">それでも学習したいときは、グングンモードをOFFにしてテストしてください</p>
+          <p className="text-lg text-gray-500">出題されるカードはありません</p>
+          <p className="text-lg text-gray-500">グングンモードをOFFにしてランダムに暗記しますか？</p>
           <button
             onClick={() => {
               startTransition(() => {
@@ -289,6 +289,17 @@ export default function TestPage() {
             className="mt-4 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             ダッシュボードに戻る
+          </button>
+          <button
+            onClick={() => { 
+               setStudySettings(prevSettings => ({
+                 ...prevSettings,
+                 useSpacedRepetition: false,
+                 }));
+             }}
+            className="mt-4 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            OFFにして暗記する
           </button>
         </div>
       </div>
