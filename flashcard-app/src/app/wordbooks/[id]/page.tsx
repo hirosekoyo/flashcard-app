@@ -3,9 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useParams } from 'next/navigation'
-import Link from 'next/link'
 import Header from '@/components/Header'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -19,12 +17,13 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
+import { CheckedState } from '@radix-ui/react-checkbox'
 
 interface Word {
   id: string
   front: string
   back: string
-  created_at: string
+  level: number
 }
 
 interface Wordbook {
@@ -33,35 +32,36 @@ interface Wordbook {
   created_at: string
 }
 
+// 編集中の単語の型 (新規追加時は id や level がない)
+interface EditableWord {
+    id?: string;
+    front: string;
+    back: string;
+    level?: number;
+}
+
 export default function WordbookDetailPage() {
-  const params = useParams<{ id: string }>();
-  const [wordbook, setWordbook] = useState<Wordbook | null>(null)
-  const [words, setWords] = useState<Word[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const params = useParams<{ id: string }>()
   const router = useRouter()
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
+
+  const isNew = params.id === 'new'
+
+  const [wordbook, setWordbook] = useState<Wordbook | null>(null)
+  const [words, setWords] = useState<Word[]>([]) // DBの元データ
+  const [editWords, setEditWords] = useState<EditableWord[]>([]) // 編集中のデータ
+  const [deletedWordIds, setDeletedWordIds] = useState<string[]>([]) // 削除対象の単語IDリスト
+  const [loading, setLoading] = useState(!isNew)
+  const [error, setError] = useState<string | null>(null)
   const [editTitle, setEditTitle] = useState('')
-  const [editWords, setEditWords] = useState<{ id?: string, front: string, back: string }[]>([])
   const [saving, setSaving] = useState(false)
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [importText, setImportText] = useState('');
-  const [importDelimiter, setImportDelimiter] = useState('tab');
-  const [splitByNewline, setSplitByNewline] = useState(true); // 改行で分割するかどうかの状態
-  const [deleteWordbookDialogOpen, setDeleteWordbookDialogOpen] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [importText, setImportText] = useState('')
+  const [importDelimiter, setImportDelimiter] = useState('tab')
+  const [splitByNewline, setSplitByNewline] = useState(true)
+  const [deleteWordbookDialogOpen, setDeleteWordbookDialogOpen] = useState(false)
 
-  useEffect(() => {
-    fetchWordbook()
-    fetchWords()
-  }, [params.id])
-
-  useEffect(() => {
-    if (wordbook) setEditTitle(wordbook.title)
-    if (words) setEditWords(words.map(w => ({ id: w.id, front: w.front, back: w.back })))
-  }, [wordbook, words])
-
-  const fetchWordbook = async () => {
+  const fetchWordbook = useCallback(async () => {
+    if (isNew || !params.id) return
     try {
       const { data, error } = await supabase
         .from('wordbooks')
@@ -75,188 +75,186 @@ export default function WordbookDetailPage() {
       console.error('Error fetching wordbook:', error)
       setError('単語帳の取得に失敗しました')
     }
-  }
+  }, [params.id, isNew])
 
-  const fetchWords = async () => {
+  const fetchWords = useCallback(async () => {
+    if (isNew || !params.id) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true)
+    setError(null)
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("ユーザーがログインしていません。")
+
       const { data, error } = await supabase
-        .from('words')
-        .select('*')
-        .eq('wordbook_id', params.id)
-        .order('created_at', { ascending: true })
+        .from('learning_progress')
+        .select(`word_id, level, words!inner(id, wordbook_id, front, back)`)
+        .eq('user_id', user.id)
+        .eq('words.wordbook_id', params.id)
+        .order('level', { ascending: false })
 
       if (error) throw error
-      setWords(data || [])
-    } catch (error) {
+
+      const transformedWords: Word[] = data?.map((item: any) => ({
+        id: item.words.id,
+        front: item.words.front || '',
+        back: item.words.back || '',
+        level: item.level,
+      })) || []
+
+      setWords(transformedWords)
+    } catch (error: any) {
       console.error('Error fetching words:', error)
-      setError('単語の取得に失敗しました')
+      setError(error.message || '単語の取得に失敗しました')
     } finally {
       setLoading(false)
     }
-  }
+  }, [params.id, isNew])
 
-  const handleDeleteWord = async () => {
-    if (!deleteTargetId) return
-    try {
-      const { error } = await supabase
-        .from('words')
-        .delete()
-        .eq('id', deleteTargetId)
-      if (error) throw error
-      setDeleteDialogOpen(false)
-      setDeleteTargetId(null)
-      fetchWords()
-    } catch (error) {
-      console.error('Error deleting word:', error)
-      setError('単語の削除に失敗しました')
+  useEffect(() => {
+    fetchWordbook()
+    fetchWords()
+  }, [fetchWordbook, fetchWords])
+
+  useEffect(() => {
+    if (isNew) {
+      setEditTitle('');
+      setEditWords([{ front: '', back: '', level: 0 }]);
+    } else {
+      if (wordbook) setEditTitle(wordbook.title);
+      setEditWords(words.map(w => ({ id: w.id, front: w.front, back: w.back, level: w.level })));
     }
-  }
+  }, [wordbook, words, isNew])
 
   const handleWordChange = (idx: number, key: 'front' | 'back', value: string) => {
     setEditWords((prev) => prev.map((w, i) => i === idx ? { ...w, [key]: value } : w))
   }
-  const handleAddWord = () => setEditWords((prev) => [...prev, { front: '', back: '' }])
-  const handleRemoveWord = (idx: number) => setEditWords((prev) => prev.filter((_, i) => i !== idx))
+
+  const handleAddWord = () => setEditWords((prev) => [...prev, { front: '', back: '', level: 0 }])
+
+  const handleRemoveWord = (idx: number) => {
+    const wordToRemove = editWords[idx];
+    if (wordToRemove.id) {
+      setDeletedWordIds((prev) => [...prev, wordToRemove.id!]);
+    }
+    setEditWords((prev) => prev.filter((_, i) => i !== idx));
+  };
+
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
     setError(null)
-    setSaveSuccess(false); // 保存開始時に成功メッセージをリセット
+    setSaveSuccess(false)
+
     try {
-      // タイトル更新
-      if (editTitle !== wordbook?.title) {
-        const { error: tError } = await supabase
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("ユーザーがログインしていません。")
+
+      const wordsToProcess = editWords.filter(w => w.front.trim() || w.back.trim());
+
+      if (isNew) {
+        // --- 新規作成処理 ---
+        const { data: newWordbook, error: wbError } = await supabase
           .from('wordbooks')
-          .update({ title: editTitle })
-          .eq('id', params.id)
-        if (tError) throw tError
-      }
-      // 単語の更新
-      const existingIds = words.map(w => w.id)
-      const newWords = editWords.filter(w => !w.id && w.front && w.back)
-      const updatedWords = editWords.filter(w => w.id && (w.front !== words.find(ow => ow.id === w.id)?.front || w.back !== words.find(ow => ow.id === w.id)?.back))
-      const deletedIds = existingIds.filter(id => !editWords.find(w => w.id === id))
-      // 追加
-      if (newWords.length > 0) {
-        // 単語
-        const { data: insertedWords, error: addErrorW } = await supabase
-          .from('words')
-          .insert(newWords.map(w => ({ ...w, wordbook_id: params.id })))
-          .select('id') // ここで挿入された単語のIDを取得することが重要
+          .insert({ title: editTitle, user_id: user.id })
+          .select()
+          .single();
+        if (wbError) throw new Error(`単語帳作成エラー: ${wbError.message}`);
+        if (!newWordbook) throw new Error("単語帳作成に失敗しました。");
 
-        if (addErrorW) throw addErrorW
+        const newWordbookId = newWordbook.id;
 
-        // 挿入された単語のIDがない場合は処理を中断
-        if (!insertedWords || insertedWords.length === 0) {
-          console.warn("新しい単語は挿入されましたが、IDが返されませんでした。学習進捗は追加されません。");
-          // 必要に応じてエラーをthrowするか、単に警告ログを出すか選択
-          // throw new Error("挿入された単語のIDが取得できませんでした。"); 
+        if (wordsToProcess.length > 0) {
+          const newWordsData = wordsToProcess.map(w => ({
+            front: w.front,
+            back: w.back,
+            wordbook_id: newWordbookId
+          }));
+          const { data: insertedWords, error: wError } = await supabase
+            .from('words')
+            .insert(newWordsData)
+            .select('id');
+          if (wError) throw new Error(`単語追加エラー: ${wError.message}`);
+          if (!insertedWords) throw new Error("単語ID取得失敗");
+
+          const progressRecords = insertedWords.map(iw => ({
+            user_id: user.id,
+            word_id: iw.id,
+            wordbook_id: newWordbookId,
+            level: 0,
+            mistake_count: 0,
+          }));
+          const { error: pError } = await supabase
+            .from('learning_progress')
+            .insert(progressRecords);
+          if (pError) throw new Error(`学習進捗追加エラー: ${pError.message}`);
         }
 
-        // 学習進捗
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-          console.warn("ユーザーがログインしていません。学習進捗は追加されません。");
-          return;
+        setSaveSuccess(true);
+        router.push(`/wordbooks/${newWordbookId}`);
+
+      } else {
+        // --- 編集処理 ---
+        if (editTitle !== wordbook?.title) {
+          const { error: tError } = await supabase
+            .from('wordbooks')
+            .update({ title: editTitle })
+            .eq('id', params.id);
+          if (tError) throw tError;
         }
 
-        // 各新しい単語ごとに学習進捗レコードを作成
-        const progressRecords = insertedWords.map(insertedWord => ({ // insertedWords を使う
-          user_id: user.id,
-          word_id: insertedWord.id, // 挿入された単一の単語ID
-          wordbook_id: params.id, // 進捗にも単語帳IDを持たせる場合
-          level: 0, // 初期レベル
-          mistake_count: 0, // 初期間違い回数
-          next_review_at: null,
-        }));
+        const originalWordsMap = new Map(words.map(w => [w.id, w]));
 
-        const { error: addErrorP } = await supabase
-          .from('learning_progress')
-          .insert(progressRecords) // 複数のレコードをまとめて挿入
+        const wordsToAdd = wordsToProcess.filter(w => !w.id);
+        const wordsToUpdate = wordsToProcess.filter(w =>
+            w.id &&
+            originalWordsMap.has(w.id) &&
+            (w.front !== originalWordsMap.get(w.id)?.front || w.back !== originalWordsMap.get(w.id)?.back)
+        );
+        const idsToDelete = deletedWordIds;
 
-        if (addErrorP) throw addErrorP
+        if (idsToDelete.length > 0) {
+          await supabase.from('learning_progress').delete().in('word_id', idsToDelete);
+          await supabase.from('words').delete().in('id', idsToDelete);
+        }
+        if (wordsToAdd.length > 0) {
+          const newWordsData = wordsToAdd.map(w => ({
+            front: w.front, back: w.back, wordbook_id: params.id
+          }));
+          const { data: insertedWords, error: addWError } = await supabase
+            .from('words').insert(newWordsData).select('id');
+          if (addWError) throw addWError;
+          if (!insertedWords) throw new Error("追加単語ID取得失敗");
+          const progressRecords = insertedWords.map(iw => ({
+            user_id: user.id, word_id: iw.id, wordbook_id: params.id, level: 0, mistake_count: 0
+          }));
+          await supabase.from('learning_progress').insert(progressRecords);
+        }
+        for (const w of wordsToUpdate) {
+          if (w.id) {
+            await supabase.from('words').update({ front: w.front, back: w.back }).eq('id', w.id);
+          }
+        }
+        
+        setDeletedWordIds([]);
+        await fetchWordbook();
+        await fetchWords();
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 2000);
       }
-      // 更新
-      for (const w of updatedWords) {
-        const { error: upError } = await supabase
-          .from('words')
-          .update({ front: w.front, back: w.back })
-          .eq('id', w.id)
-        if (upError) throw upError
-      }
-      // 削除
-      if (deletedIds.length > 0) {
-        const { error: delError } = await supabase
-          .from('words')
-          .delete()
-          .in('id', deletedIds)
-        if (delError) throw delError
-      }
-      fetchWordbook()
-      fetchWords()
-      await new Promise(resolve => setTimeout(resolve, 500)); // 意図的な遅延 (例)
-      setSaveSuccess(true); // 保存成功
-      setTimeout(() => setSaveSuccess(false), 2000); // 2秒後に成功メッセージを消す
+
     } catch (error: any) {
-      setError(error.message)
+      setError(error.message || '保存に失敗しました');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
-
-  const handleImportWords = useCallback(() => {
-    if (!importText) return;
-
-    const separator = importDelimiter === 'tab' ? '\t' : ',';
-    // const lines = splitByNewline ? importText.split('\n') : [importText];　ひろせ
-    const lines = splitByNewline ? importText.split(/\r\n|\r|\n/) : [importText];
-    let newWords: string[] = [];
-    let inQuote = false;
-    let currentWord = '';
-
-    lines.forEach(line => {
-      const parts = line.split(separator);
-      parts.forEach(part => {
-        const trimmedPart = part.trim();
-        if (inQuote) {
-          // currentWord += separator + trimmedPart; // 区切り文字を保持　ひろせ
-          currentWord += trimmedPart; // 区切り文字を保持しない
-          if (trimmedPart.endsWith('"')) {
-            inQuote = false;
-            newWords.push(currentWord.slice(0, -1)); // 最後の " を除く
-            currentWord = '';
-          }
-        } else {
-          if (trimmedPart.startsWith('"')) {
-            inQuote = true;
-            currentWord = trimmedPart.slice(1); // 最初の " を除く
-            if (trimmedPart.endsWith('"')) {
-              inQuote = false;
-              newWords.push(currentWord.slice(0, -1));
-              currentWord = '';
-            }
-          } else {
-            newWords.push(trimmedPart);
-          }
-        }
-      });
-      if (inQuote) {
-        currentWord += '\n'; // 行が終わってもクオートが閉じられていない場合は改行を保持
-      }
-    });
-
-
-    const newWordPairs: { id?: string, front: string, back: string }[] = [];
-    for (let i = 0; i < newWords.length; i += 2) {
-      const front = newWords[i] || '';
-      const back = newWords[i + 1] || '';
-      if (front || back) {
-        newWordPairs.push({ front, back });
-      }
-    }
-
-    // 重複をチェック（frontとbackの組み合わせで比較）
+  
+  // パースされた単語リストを受け取り、重複を除いてstateに追加する共通関数
+  const addUniqueWords = useCallback((newWordPairs: EditableWord[]) => {
     const existingWordSet = new Set(editWords.map(w => `${w.front.trim()}-${w.back.trim()}`));
     const uniqueNewWordPairs = newWordPairs.filter(pair => {
       const key = `${pair.front.trim()}-${pair.back.trim()}`;
@@ -268,95 +266,125 @@ export default function WordbookDetailPage() {
     });
 
     const skippedCount = newWordPairs.length - uniqueNewWordPairs.length;
-    setEditWords(prevWords => [...prevWords, ...uniqueNewWordPairs]);
+    setEditWords(prevWords => [...prevWords.filter(w => w.front.trim() || w.back.trim()), ...uniqueNewWordPairs]);
+    if (skippedCount > 0) alert(`${skippedCount} 件の重複する単語がスキップされました。`);
+  }, [editWords]);
+
+  // テキストエリアからのインポート（UIの設定を反映）
+  const handleImportFromText = () => {
+    if (!importText) return;
+    const separator = importDelimiter === 'tab' ? '\t' : ',';
+    const lines = splitByNewline ? importText.split(/\r\n|\r|\n/) : [importText];
+    
+    const newWordPairs: EditableWord[] = [];
+    lines.forEach(line => {
+        if(line.trim() === '') return;
+        const parts = line.split(separator);
+        const front = parts[0]?.trim() || '';
+        const back = parts[1]?.trim() || '';
+        if (front || back) {
+            newWordPairs.push({ front, back, level: 0 });
+        }
+    });
+    addUniqueWords(newWordPairs);
     setImportText('');
+  }
 
-    if (skippedCount > 0) {
-      alert(`${skippedCount} 件の重複する単語がスキップされました。`);
+  // CSVファイルからのインポート（カンマ区切り・改行区切りで固定）
+  const handleCsvFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+          const text = event.target?.result as string;
+          if (text) {
+              const lines = text.split(/\r\n|\r|\n/);
+              const newWordPairs: EditableWord[] = [];
+              lines.forEach(line => {
+                  if (line.trim() === '') return;
+                  const parts = line.split(','); // CSVなのでカンマ区切りで固定
+                  const front = parts[0]?.trim() || '';
+                  const back = parts[1]?.trim() || '';
+                  if (front || back) {
+                      newWordPairs.push({ front, back, level: 0 });
+                  }
+              });
+              addUniqueWords(newWordPairs);
+          }
+      };
+      reader.readAsText(file, 'UTF-8');
+      e.target.value = ''; 
+  };
+
+
+  const handleRemoveWordbook = async () => {
+    if (isNew || !params.id) return;
+    try {
+      await supabase.from('learning_progress').delete().eq('wordbook_id', params.id);
+      await supabase.from('words').delete().eq('wordbook_id', params.id);
+      await supabase.from('wordbooks').delete().eq('id', params.id);
+      router.push('/dashboard');
+    } catch (error: any) {
+      console.error('Error deleting wordbook:', error);
+      setError('単語帳の削除に失敗しました');
+    } finally {
+      setDeleteWordbookDialogOpen(false);
     }
-
-  }, [importDelimiter, importText, editWords, splitByNewline]);
-
+  };
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-lg">読み込み中...</div>
       </div>
-    )
+    );
   }
 
-  if (error) {
+  if (error && !isNew) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-500 mb-4">{error}</p>
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            ダッシュボードに戻る
-          </button>
+          <Button onClick={() => router.push('/dashboard')}>ダッシュボードに戻る</Button>
         </div>
       </div>
-    )
+    );
   }
-
-  const handleRemoveWordbook = async () => {
-    try {
-      // まず、関連する単語を削除する
-      const { error: deleteWordsError } = await supabase
-        .from('words')
-        .delete()
-        .eq('wordbook_id', params.id);
-
-      if (deleteWordsError) throw deleteWordsError;
-
-      // 次に、単語帳自体を削除する
-      const { error: deleteWordbookError } = await supabase
-        .from('wordbooks')
-        .delete()
-        .eq('id', params.id);
-
-      if (deleteWordbookError) throw deleteWordbookError;
-
-      router.push('/dashboard');
-    } catch (error: any) {
-      console.error('Error deleting wordbook and associated words:', error);
-      setError('単語帳と関連する単語の削除に失敗しました');
-    } finally {
-      setDeleteWordbookDialogOpen(false);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <Header showBackButton backUrl="/dashboard" />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">単語帳編集</h1>
-        <div className="flex space-x-2">
-          {/* ひろせ　ダイアログコンポーネントをつかう */}
-          <Dialog open={deleteWordbookDialogOpen} onOpenChange={setDeleteWordbookDialogOpen}>
-            <DialogTrigger asChild>
-              <Button type="button" variant="destructive" size="sm">単語帳を削除する</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeaderUI>
-                <DialogTitleUI>単語帳の削除</DialogTitleUI>
-                <DialogDescription>
-                  本当にこの単語帳を削除しますか？削除すると、単語帳に含まれる全ての単語も削除されます。この操作は取り消せません。
-                </DialogDescription>
-              </DialogHeaderUI>
-              <DialogFooter>
-                <DialogClose asChild>
-                  <Button type="button" variant="secondary">キャンセル</Button>
-                </DialogClose>
-                <Button type="button" variant="destructive" onClick={handleRemoveWordbook}>削除</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-        <form onSubmit={handleSave} className="space-y-6 mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">
+            {isNew ? '新しい単語帳を作成' : '単語帳編集'}
+        </h1>
+
+        {!isNew && (
+            <div className="flex justify-end mb-4">
+            <Dialog open={deleteWordbookDialogOpen} onOpenChange={setDeleteWordbookDialogOpen}>
+                <DialogTrigger asChild>
+                <Button type="button" variant="destructive" size="sm">単語帳を削除する</Button>
+                </DialogTrigger>
+                <DialogContent>
+                <DialogHeaderUI>
+                    <DialogTitleUI>単語帳の削除</DialogTitleUI>
+                    <DialogDescription>
+                    本当にこの単語帳を削除しますか？削除すると、単語帳に含まれる全ての単語と学習進捗も削除されます。この操作は取り消せません。
+                    </DialogDescription>
+                </DialogHeaderUI>
+                <DialogFooter>
+                    <DialogClose asChild>
+                    <Button type="button" variant="secondary">キャンセル</Button>
+                    </DialogClose>
+                    <Button type="button" variant="destructive" onClick={handleRemoveWordbook}>削除</Button>
+                </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            </div>
+        )}
+
+        <form onSubmit={handleSave} className="space-y-6 mb-8 bg-white p-6 rounded-lg shadow">
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-gray-700">単語帳のタイトル</label>
             <Input
@@ -366,13 +394,20 @@ export default function WordbookDetailPage() {
               className="mt-1"
               value={editTitle}
               onChange={e => setEditTitle(e.target.value)}
+              placeholder="新しい単語帳の名前"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">単語リスト</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">単語リスト {isNew ? '' : '(学習レベル順)'}</label>
             <div className="space-y-2">
               {editWords.map((word, idx) => (
-                <div key={word.id || idx} className="flex gap-2 items-center">
+                <div key={word.id || `new-${idx}`} className="flex gap-2 items-center">
+                  {!isNew && (
+                    <span className="text-xs text-gray-600 w-24 text-right pr-2">
+                        Lv: {word.level ?? 'N/A'}
+                    </span>
+                  )}
+                  {isNew && <div className="w-24"></div>}
                   <Input
                     type="text"
                     placeholder="表面 (例: apple)"
@@ -385,68 +420,76 @@ export default function WordbookDetailPage() {
                     value={word.back}
                     onChange={e => handleWordChange(idx, 'back', e.target.value)}
                   />
-                  <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveWord(idx)} disabled={editWords.length === 1}>削除</Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => handleRemoveWord(idx)}
+                  >
+                    削除
+                  </Button>
                 </div>
               ))}
               <Button type="button" variant="secondary" size="sm" onClick={handleAddWord}>単語を追加</Button>
-              <label className="block text-sm font-medium text-gray-700 mt-4">
-                タブ区切りまたはカンマ区切りで一括登録（重複は自動でスキップされます）
-              </label>
-              <textarea
-                value={importText}
-                onChange={(e) => setImportText(e.target.value)}
-                placeholder="例: apple	りんご, banana	バナナ"
-                rows={3}
-                className="mt-1 w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-              />
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    value="tab"
-                    checked={importDelimiter === 'tab'}
-                    onChange={(e) => setImportDelimiter(e.target.value)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <span className="text-sm font-medium text-gray-700">タブ区切り</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    value="comma"
-                    checked={importDelimiter === 'comma'}
-                    onChange={(e) => setImportDelimiter(e.target.value)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <span className="text-sm font-medium text-gray-700">カンマ区切り</span>
-                </label>
-                <label className="flex items-center gap-2">
-                  <Checkbox
-                    checked={splitByNewline}
-                    onCheckedChange={setSplitByNewline}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <span className="text-sm font-medium text-gray-700">改行を新しい単語として扱う</span>
-                </label>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleImportWords}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md py-2 px-4 focus:outline-none focus:shadow-outline"
-                >
-                  インポート
-                </Button>
-              </div>
             </div>
           </div>
-          {error && <div className="text-red-500 text-sm text-center">{error}</div>}
-          <div className="flex justify-end space-x-4">
-            <Button type="submit" disabled={saving}>{saving ? '保存中...' : '保存'}</Button>
+
+          <div className="pt-4 border-t mt-6">
+            <h3 className="text-lg font-medium text-gray-800">一括登録</h3>
+            
+            <div className="mt-4 p-4 border rounded-md">
+                <label className="block text-sm font-medium text-gray-700">1. テキストからインポート</label>
+                <textarea
+                value={importText}
+                onChange={(e) => setImportText(e.target.value)}
+                placeholder="テキストをここに貼り付け&#13;&#10;例: apple	りんご (改行) banana	バナナ"
+                rows={3}
+                className="mt-1 w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+                <div className="flex flex-wrap items-center gap-4 mt-2">
+                <label className="flex items-center gap-2">
+                    <input type="radio" value="tab" checked={importDelimiter === 'tab'} onChange={(e) => setImportDelimiter(e.target.value)} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+                    <span className="text-sm font-medium text-gray-700">タブ区切り</span>
+                </label>
+                <label className="flex items-center gap-2">
+                    <input type="radio" value="comma" checked={importDelimiter === 'comma'} onChange={(e) => setImportDelimiter(e.target.value)} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+                    <span className="text-sm font-medium text-gray-700">カンマ区切り</span>
+                </label>
+                <label className="flex items-center gap-2">
+                    <Checkbox id="split-newline-cb" checked={splitByNewline} onCheckedChange={(checked: CheckedState) => setSplitByNewline(checked as boolean)} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+                    <label htmlFor="split-newline-cb" className="text-sm font-medium text-gray-700">改行で単語を区切る</label>
+                </label>
+                </div>
+                <div className="mt-2">
+                    <Button type="button" size="sm" onClick={handleImportFromText} className="bg-blue-600 hover:bg-blue-700 text-white">テキストをインポート</Button>
+                </div>
+            </div>
+
+            <div className="mt-4 p-4 border rounded-md">
+                <label className="block text-sm font-medium text-gray-700">2. CSVファイルからインポート</label>
+                <p className="text-xs text-gray-500 mt-1">カンマ区切りのCSVファイルを選択してください。(1列目:表面, 2列目:裏面)</p>
+                <div className="mt-2">
+                    <Input
+                        id="csv-upload"
+                        type="file"
+                        accept=".csv"
+                        className="hidden"
+                        onChange={handleCsvFileImport}
+                    />
+                    <Button type="button" size="sm" asChild className="bg-green-600 hover:bg-green-700 text-white">
+                        <label htmlFor="csv-upload">CSVインポート</label>
+                    </Button>
+                </div>
+            </div>
           </div>
-          {saveSuccess && <span className="text-green-500">保存完了！</span>}
+
+          {error && <div className="text-red-500 text-sm text-center">{error}</div>}
+          <div className="flex justify-end items-center space-x-4">
+              {saveSuccess && <span className="text-green-500">{isNew ? '作成しました！' : '保存完了！'}</span>}
+            <Button type="submit" disabled={saving}>{saving ? '保存中...' : (isNew ? '作成' : '保存')}</Button>
+          </div>
         </form>
       </div>
     </div>
   )
 }
-
