@@ -48,6 +48,7 @@ export default function WordbookDetailPage() {
 
   // ゲストユーザーのメールアドレスを定義 
   // ひろせ　ゲスト変数を共通するのと毎回ユーザーデータを取得するのでなく、格納したい。
+  //ログインエラーのメッセージが英語のまま
   const GUEST_EMAIL = 'guest@geust.com';
 
   const [wordbook, setWordbook] = useState<Wordbook | null>(null)
