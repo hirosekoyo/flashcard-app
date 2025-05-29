@@ -34,10 +34,10 @@ interface Wordbook {
 
 // 編集中の単語の型 (新規追加時は id や level がない)
 interface EditableWord {
-    id?: string;
-    front: string;
-    back: string;
-    level?: number;
+  id?: string;
+  front: string;
+  back: string;
+  level?: number;
 }
 
 export default function WordbookDetailPage() {
@@ -45,6 +45,10 @@ export default function WordbookDetailPage() {
   const router = useRouter()
 
   const isNew = params.id === 'new'
+
+  // ゲストユーザーのメールアドレスを定義 
+  // ひろせ　ゲスト変数を共通するのと毎回ユーザーデータを取得するのでなく、格納したい。
+  const GUEST_EMAIL = 'guest@geust.com';
 
   const [wordbook, setWordbook] = useState<Wordbook | null>(null)
   const [words, setWords] = useState<Word[]>([]) // DBの元データ
@@ -152,6 +156,10 @@ export default function WordbookDetailPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("ユーザーがログインしていません。")
+      if (user.email === GUEST_EMAIL) {
+        alert('ゲストユーザーは一部機能を制限しています。');
+        return;
+      }
 
       const wordsToProcess = editWords.filter(w => w.front.trim() || w.back.trim());
 
@@ -210,9 +218,9 @@ export default function WordbookDetailPage() {
 
         const wordsToAdd = wordsToProcess.filter(w => !w.id);
         const wordsToUpdate = wordsToProcess.filter(w =>
-            w.id &&
-            originalWordsMap.has(w.id) &&
-            (w.front !== originalWordsMap.get(w.id)?.front || w.back !== originalWordsMap.get(w.id)?.back)
+          w.id &&
+          originalWordsMap.has(w.id) &&
+          (w.front !== originalWordsMap.get(w.id)?.front || w.back !== originalWordsMap.get(w.id)?.back)
         );
         const idsToDelete = deletedWordIds;
 
@@ -238,7 +246,7 @@ export default function WordbookDetailPage() {
             await supabase.from('words').update({ front: w.front, back: w.back }).eq('id', w.id);
           }
         }
-        
+
         setDeletedWordIds([]);
         await fetchWordbook();
         await fetchWords();
@@ -252,7 +260,7 @@ export default function WordbookDetailPage() {
       setSaving(false);
     }
   }
-  
+
   // パースされた単語リストを受け取り、重複を除いてstateに追加する共通関数
   const addUniqueWords = useCallback((newWordPairs: EditableWord[]) => {
     const existingWordSet = new Set(editWords.map(w => `${w.front.trim()}-${w.back.trim()}`));
@@ -275,16 +283,16 @@ export default function WordbookDetailPage() {
     if (!importText) return;
     const separator = importDelimiter === 'tab' ? '\t' : ',';
     const lines = splitByNewline ? importText.split(/\r\n|\r|\n/) : [importText];
-    
+
     const newWordPairs: EditableWord[] = [];
     lines.forEach(line => {
-        if(line.trim() === '') return;
-        const parts = line.split(separator);
-        const front = parts[0]?.trim() || '';
-        const back = parts[1]?.trim() || '';
-        if (front || back) {
-            newWordPairs.push({ front, back, level: 0 });
-        }
+      if (line.trim() === '') return;
+      const parts = line.split(separator);
+      const front = parts[0]?.trim() || '';
+      const back = parts[1]?.trim() || '';
+      if (front || back) {
+        newWordPairs.push({ front, back, level: 0 });
+      }
     });
     addUniqueWords(newWordPairs);
     setImportText('');
@@ -292,33 +300,39 @@ export default function WordbookDetailPage() {
 
   // CSVファイルからのインポート（カンマ区切り・改行区切りで固定）
   const handleCsvFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-          const text = event.target?.result as string;
-          if (text) {
-              const lines = text.split(/\r\n|\r|\n/);
-              const newWordPairs: EditableWord[] = [];
-              lines.forEach(line => {
-                  if (line.trim() === '') return;
-                  const parts = line.split(','); // CSVなのでカンマ区切りで固定
-                  const front = parts[0]?.trim() || '';
-                  const back = parts[1]?.trim() || '';
-                  if (front || back) {
-                      newWordPairs.push({ front, back, level: 0 });
-                  }
-              });
-              addUniqueWords(newWordPairs);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (text) {
+        const lines = text.split(/\r\n|\r|\n/);
+        const newWordPairs: EditableWord[] = [];
+        lines.forEach(line => {
+          if(line.trim() === '') return;
+          const parts = line.split(','); // CSVなのでカンマ区切りで固定
+          const front = parts[0]?.trim() || '';
+          const back = parts[1]?.trim() || '';
+          if (front || back) {
+            newWordPairs.push({ front, back, level: 0 });
           }
-      };
-      reader.readAsText(file, 'UTF-8');
-      e.target.value = ''; 
+        });
+        addUniqueWords(newWordPairs);
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
+    e.target.value = '';
   };
 
 
   const handleRemoveWordbook = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error("ユーザーがログインしていません。")
+    if (user.email === GUEST_EMAIL) {
+      alert('ゲストユーザーは一部機能を制限しています。');
+      return;
+    }
     if (isNew || !params.id) return;
     try {
       await supabase.from('learning_progress').delete().eq('wordbook_id', params.id);
@@ -357,31 +371,31 @@ export default function WordbookDetailPage() {
       <Header showBackButton backUrl="/dashboard" />
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            {isNew ? '新しい単語帳を作成' : '単語帳編集'}
+          {isNew ? '新しい単語帳を作成' : '単語帳編集'}
         </h1>
 
         {!isNew && (
-            <div className="flex justify-end mb-4">
+          <div className="flex justify-end mb-4">
             <Dialog open={deleteWordbookDialogOpen} onOpenChange={setDeleteWordbookDialogOpen}>
-                <DialogTrigger asChild>
+              <DialogTrigger asChild>
                 <Button type="button" variant="destructive" size="sm">単語帳を削除する</Button>
-                </DialogTrigger>
-                <DialogContent>
+              </DialogTrigger>
+              <DialogContent>
                 <DialogHeaderUI>
-                    <DialogTitleUI>単語帳の削除</DialogTitleUI>
-                    <DialogDescription>
+                  <DialogTitleUI>単語帳の削除</DialogTitleUI>
+                  <DialogDescription>
                     本当にこの単語帳を削除しますか？削除すると、単語帳に含まれる全ての単語と学習進捗も削除されます。この操作は取り消せません。
-                    </DialogDescription>
+                  </DialogDescription>
                 </DialogHeaderUI>
                 <DialogFooter>
-                    <DialogClose asChild>
+                  <DialogClose asChild>
                     <Button type="button" variant="secondary">キャンセル</Button>
-                    </DialogClose>
-                    <Button type="button" variant="destructive" onClick={handleRemoveWordbook}>削除</Button>
+                  </DialogClose>
+                  <Button type="button" variant="destructive" onClick={handleRemoveWordbook}>削除</Button>
                 </DialogFooter>
-                </DialogContent>
+              </DialogContent>
             </Dialog>
-            </div>
+          </div>
         )}
 
         <form onSubmit={handleSave} className="space-y-6 mb-8 bg-white p-6 rounded-lg shadow">
@@ -404,7 +418,7 @@ export default function WordbookDetailPage() {
                 <div key={word.id || `new-${idx}`} className="flex gap-2 items-center">
                   {!isNew && (
                     <span className="text-xs text-gray-600 w-24 text-right pr-2">
-                        Lv: {word.level ?? 'N/A'}
+                      Lv: {word.level ?? 'N/A'}
                     </span>
                   )}
                   {isNew && <div className="w-24"></div>}
@@ -436,56 +450,56 @@ export default function WordbookDetailPage() {
 
           <div className="pt-4 border-t mt-6">
             <h3 className="text-lg font-medium text-gray-800">一括登録</h3>
-            
+
             <div className="mt-4 p-4 border rounded-md">
-                <label className="block text-sm font-medium text-gray-700">1. テキストからインポート</label>
-                <textarea
+              <label className="block text-sm font-medium text-gray-700">1. テキストからインポート</label>
+              <textarea
                 value={importText}
                 onChange={(e) => setImportText(e.target.value)}
                 placeholder="テキストをここに貼り付け&#13;&#10;例: apple	りんご (改行) banana	バナナ"
                 rows={3}
                 className="mt-1 w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-                <div className="flex flex-wrap items-center gap-4 mt-2">
+              />
+              <div className="flex flex-wrap items-center gap-4 mt-2">
                 <label className="flex items-center gap-2">
-                    <input type="radio" value="tab" checked={importDelimiter === 'tab'} onChange={(e) => setImportDelimiter(e.target.value)} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-                    <span className="text-sm font-medium text-gray-700">タブ区切り</span>
+                  <input type="radio" value="tab" checked={importDelimiter === 'tab'} onChange={(e) => setImportDelimiter(e.target.value)} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+                  <span className="text-sm font-medium text-gray-700">タブ区切り</span>
                 </label>
                 <label className="flex items-center gap-2">
-                    <input type="radio" value="comma" checked={importDelimiter === 'comma'} onChange={(e) => setImportDelimiter(e.target.value)} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-                    <span className="text-sm font-medium text-gray-700">カンマ区切り</span>
+                  <input type="radio" value="comma" checked={importDelimiter === 'comma'} onChange={(e) => setImportDelimiter(e.target.value)} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+                  <span className="text-sm font-medium text-gray-700">カンマ区切り</span>
                 </label>
                 <label className="flex items-center gap-2">
-                    <Checkbox id="split-newline-cb" checked={splitByNewline} onCheckedChange={(checked: CheckedState) => setSplitByNewline(checked as boolean)} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
-                    <label htmlFor="split-newline-cb" className="text-sm font-medium text-gray-700">改行で単語を区切る</label>
+                  <Checkbox id="split-newline-cb" checked={splitByNewline} onCheckedChange={(checked: CheckedState) => setSplitByNewline(checked as boolean)} className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" />
+                  <label htmlFor="split-newline-cb" className="text-sm font-medium text-gray-700">改行で単語を区切る</label>
                 </label>
-                </div>
-                <div className="mt-2">
-                    <Button type="button" size="sm" onClick={handleImportFromText} className="bg-blue-600 hover:bg-blue-700 text-white">テキストをインポート</Button>
-                </div>
+              </div>
+              <div className="mt-2">
+                <Button type="button" size="sm" onClick={handleImportFromText} className="bg-blue-600 hover:bg-blue-700 text-white">テキストをインポート</Button>
+              </div>
             </div>
 
             <div className="mt-4 p-4 border rounded-md">
-                <label className="block text-sm font-medium text-gray-700">2. CSVファイルからインポート</label>
-                <p className="text-xs text-gray-500 mt-1">カンマ区切りのCSVファイルを選択してください。(1列目:表面, 2列目:裏面)</p>
-                <div className="mt-2">
-                    <Input
-                        id="csv-upload"
-                        type="file"
-                        accept=".csv"
-                        className="hidden"
-                        onChange={handleCsvFileImport}
-                    />
-                    <Button type="button" size="sm" asChild className="bg-green-600 hover:bg-green-700 text-white">
-                        <label htmlFor="csv-upload">CSVインポート</label>
-                    </Button>
-                </div>
+              <label className="block text-sm font-medium text-gray-700">2. CSVファイルからインポート</label>
+              <p className="text-xs text-gray-500 mt-1">カンマ区切りのCSVファイルを選択してください。(1列目:表面, 2列目:裏面)</p>
+              <div className="mt-2">
+                <Input
+                  id="csv-upload"
+                  type="file"
+                  accept=".csv"
+                  className="hidden"
+                  onChange={handleCsvFileImport}
+                />
+                <Button type="button" size="sm" asChild className="bg-green-600 hover:bg-green-700 text-white">
+                  <label htmlFor="csv-upload">CSVインポート</label>
+                </Button>
+              </div>
             </div>
           </div>
 
           {error && <div className="text-red-500 text-sm text-center">{error}</div>}
           <div className="flex justify-end items-center space-x-4">
-              {saveSuccess && <span className="text-green-500">{isNew ? '作成しました！' : '保存完了！'}</span>}
+            {saveSuccess && <span className="text-green-500">{isNew ? '作成しました！' : '保存完了！'}</span>}
             <Button type="submit" disabled={saving}>{saving ? '保存中...' : (isNew ? '作成' : '保存')}</Button>
           </div>
         </form>

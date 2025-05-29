@@ -142,7 +142,7 @@ export default function DashboardPage() {
                 <path d="M24 44C35.0457 44 44 35.0457 44 24C44 12.9543 35.0457 4 24 4C12.9543 4 4 12.9543 4 24C4 35.0457 12.9543 44 24 44Z" fill="#6366F1" fillOpacity="0.15" />
                 <path d="M24 36V12M24 12C20.6863 12 18 14.6863 18 18C18 21.3137 20.6863 24 24 24C27.3137 24 30 21.3137 30 18C30 14.6863 27.3137 12 24 12Z" stroke="#6366F1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-              <span className="ml-2 text-xl font-bold">忘却曲線単語帳</span>
+              <span className="ml-2 text-xl font-bold">コツコツ単語帳</span>
             </div>
             <Button variant="outline" onClick={handleLogout}>ログアウト</Button>
           </div>
@@ -213,7 +213,7 @@ export default function DashboardPage() {
           <div>
             <div className="mb-4">
               <h2 className="text-lg font-medium text-gray-900 mb-2">単語帳を選択</h2>
-              <p className="text-sm text-gray-500">学習したい単語帳を選択してください</p>
+              <p className="text-sm text-gray-500">学習したい単語帳を選択してください※複数選択可能</p>
             </div>
 
             {/* 単語帳選択リスト */}

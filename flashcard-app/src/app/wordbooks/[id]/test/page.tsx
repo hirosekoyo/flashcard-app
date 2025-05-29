@@ -35,6 +35,10 @@ export default function TestPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+    // ゲストユーザーのメールアドレスを定義 
+  // ひろせ　ゲスト変数を共通するのと毎回ユーザーデータを取得するのでなく、格納したい。
+  const GUEST_EMAIL = 'guest@geust.com';
+
   const [words, setWords] = useState<Word[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -188,6 +192,18 @@ export default function TestPage() {
   };
 
   const handleSaveAndExit = async (finalChange?: ProgressUpdate) => {
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      startTransition(() => router.push('/login'));
+      return;
+    }
+    if (user.email === GUEST_EMAIL) {
+      alert('ゲストユーザーは学習進捗を記録できません。');
+      startTransition(() => router.push('/dashboard'));
+      return;
+    }
+
     let changesToProcess = { ...unsavedChanges }; 
 
     if (finalChange) {
@@ -201,11 +217,6 @@ export default function TestPage() {
       return;
     }
   
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      startTransition(() => router.push('/login'));
-      return;
-    }
   
     const updatesToPush = updatesArray.map(change => ({
       user_id: user.id,
@@ -380,7 +391,7 @@ export default function TestPage() {
                   <>
                     <span>今日のノルマ: <span className="text-xl font-bold text-blue-600">{todayReviewWordsCount}</span>枚</span>
                     <br />
-                    <span>レベル: <span className="text-xl font-bold text-blue-600">{progresses[currentWord.word_id] ?? currentWord.level}</span></span>
+                    <span>学習レベル: <span className="text-xl font-bold text-blue-600">{progresses[currentWord.word_id] ?? currentWord.level}</span></span>
                   </>
                 )}
                 <br />
@@ -436,7 +447,7 @@ export default function TestPage() {
         ) : (
           <div className="flex justify-center">
             {!isLastCardForButtonDisplay && (
-                <Button variant="default" size="lg" onClick={goNext}>次の単語</Button>
+                <Button variant="default" size="lg" onClick={goNext}>次のカード</Button>
             )}
           </div>
         )}
