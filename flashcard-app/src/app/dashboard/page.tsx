@@ -264,8 +264,8 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-sm font-medium text-gray-900">グングンモード</span>
-                    <p className="text-sm text-gray-500">忘却曲線にしたがって出題する、効率よく記憶に定着させるモードです</p>
+                    <span className="text-sm font-medium text-gray-900">コツコツモード</span>
+                    <p className="text-sm text-gray-500">忘却曲線に沿った、今日思い出すべき単語と覚えていない単語のみ出題します</p>
                   </div>
                   <Switch checked={studySettings.useSpacedRepetition} onCheckedChange={() => setStudySettings({ ...studySettings, useSpacedRepetition: !studySettings.useSpacedRepetition })} />
                 </div>

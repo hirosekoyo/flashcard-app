@@ -335,7 +335,7 @@ export default function TestPage() {
         <div className="text-center">
           <p className="text-lg text-gray-500">出題されるカードはありません</p>
           {studySettings.useSpacedRepetition && (
-            <p className="text-lg text-gray-500">グングンモードをOFFにしてランダムに暗記しますか？</p>
+            <p className="text-lg text-gray-500">コツコツモードをOFFにしてランダムに暗記しますか？</p>
           )}
           <Button
             onClick={() => startTransition(() => router.push(`/dashboard`))}
