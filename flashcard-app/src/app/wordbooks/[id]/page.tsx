@@ -157,10 +157,11 @@ export default function WordbookDetailPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("ユーザーがログインしていません。")
-      if (user.email === GUEST_EMAIL) {
-        alert('ゲストユーザーは一部機能を制限しています。');
-        return;
-      }
+      //ゲスト制限
+      // if (user.email === GUEST_EMAIL) {
+      //   alert('ゲストユーザーは一部機能を制限しています。');
+      //   return;
+      // }
 
       const wordsToProcess = editWords.filter(w => w.front.trim() || w.back.trim());
 
@@ -330,10 +331,11 @@ export default function WordbookDetailPage() {
   const handleRemoveWordbook = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) throw new Error("ユーザーがログインしていません。")
-    if (user.email === GUEST_EMAIL) {
-      alert('ゲストユーザーは一部機能を制限しています。');
-      return;
-    }
+    //ゲスト制限
+    // if (user.email === GUEST_EMAIL) {
+    //   alert('ゲストユーザーは一部機能を制限しています。');
+    //   return;
+    // }
     if (isNew || !params.id) return;
     try {
       await supabase.from('learning_progress').delete().eq('wordbook_id', params.id);

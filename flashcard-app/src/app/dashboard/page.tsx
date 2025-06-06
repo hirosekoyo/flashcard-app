@@ -144,6 +144,7 @@ export default function DashboardPage() {
               </svg>
               <span className="ml-2 text-xl font-bold">コツコツ単語帳</span>
             </div>
+            <Button variant="outline" onClick={() => router.push('/how-to-use')}>使い方</Button>
             <Button variant="outline" onClick={handleLogout}>ログアウト</Button>
           </div>
         </div>
