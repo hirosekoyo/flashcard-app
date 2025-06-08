@@ -151,19 +151,7 @@ export default function DashboardPage() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">マイ単語帳</h1>
-        </div>
 
-        {/* タブ */}
-        <div className="mb-8">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex">
-              <Button variant={activeTab === 'wordbooks' ? 'default' : 'ghost'} className="w-1/2 rounded-none border-b-2" onClick={() => setActiveTab('wordbooks')}>単語帳</Button>
-              <Button variant={activeTab === 'study' ? 'default' : 'ghost'} className="w-1/2 rounded-none border-b-2" onClick={() => setActiveTab('study')}>テスト</Button>
-            </nav>
-          </div>
-        </div>
 
         {activeTab === 'wordbooks' && (
           <div>
@@ -284,6 +272,28 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      {/* フッター */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16">
+            <Button 
+              variant={activeTab === 'wordbooks' ? 'default' : 'ghost'} 
+              className="flex-1 rounded-none border-t-2 border-transparent hover:border-gray-300" 
+              onClick={() => setActiveTab('wordbooks')}
+            >
+              単語帳
+            </Button>
+            <Button 
+              variant={activeTab === 'study' ? 'default' : 'ghost'} 
+              className="flex-1 rounded-none border-t-2 border-transparent hover:border-gray-300" 
+              onClick={() => setActiveTab('study')}
+            >
+              テスト
+            </Button>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
