@@ -152,6 +152,15 @@ export default function DashboardPage() {
 
       <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
+        {/* タブ */}
+        <div className="mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex">
+              <Button variant={activeTab === 'wordbooks' ? 'default' : 'ghost'} className="w-1/2 rounded-none border-b-2" onClick={() => setActiveTab('wordbooks')}>単語帳</Button>
+              <Button variant={activeTab === 'study' ? 'default' : 'ghost'} className="w-1/2 rounded-none border-b-2" onClick={() => setActiveTab('study')}>テスト</Button>
+            </nav>
+          </div>
+        </div>
 
         {activeTab === 'wordbooks' && (
           <div>
@@ -274,7 +283,7 @@ export default function DashboardPage() {
       </main>
 
       {/* フッター */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
+      {/* <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex h-16">
             <Button 
@@ -293,7 +302,7 @@ export default function DashboardPage() {
             </Button>
           </div>
         </div>
-      </footer>
+      </footer> */}
     </div>
   )
 }

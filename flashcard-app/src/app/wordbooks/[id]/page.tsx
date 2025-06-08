@@ -420,20 +420,20 @@ export default function WordbookDetailPage() {
               {editWords.map((word, idx) => (
                 <div key={word.id || `new-${idx}`} className="flex gap-2 items-center">
                   {!isNew && (
-                    <span className="text-xs text-gray-600 w-24 text-right pr-2">
+                    <span className="text-xs text-gray-600 min-w-[3rem] text-right pr-2">
                       Lv: {word.level ?? 'N/A'}
                     </span>
                   )}
-                  {isNew && <div className="w-24"></div>}
+                  {isNew && <div className="min-w-[3rem]"></div>}
                   <Input
                     type="text"
-                    placeholder="表面 (例: apple)"
+                    placeholder="表"
                     value={word.front}
                     onChange={e => handleWordChange(idx, 'front', e.target.value)}
                   />
                   <Input
                     type="text"
-                    placeholder="裏面 (例: りんご)"
+                    placeholder="裏"
                     value={word.back}
                     onChange={e => handleWordChange(idx, 'back', e.target.value)}
                   />

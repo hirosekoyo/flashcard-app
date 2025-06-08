@@ -421,17 +421,17 @@ export default function TestPage() {
         <div className="flex justify-center mb-8">
           <div
             key={currentWord.word_id}  
-            className={`relative w-80 h-48 cursor-pointer perspective`} // カードの幅は w-80
+            className={`relative w-full h-[calc(100vh-300px)] cursor-pointer perspective`}
             onClick={() => setIsFlipped(f => !f)}
           >
             <div className={`absolute w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${isFlipped ? 'rotate-y-180' : ''}`}>
               <Card className="absolute w-full h-full backface-hidden flex items-center justify-center">
-                <CardContent className="flex items-center justify-center h-full text-2xl font-bold p-4 text-center">
+                <CardContent className="flex items-center justify-center h-full text-4xl font-bold p-4 text-center">
                   {frontContent}
                 </CardContent>
               </Card>
               <Card className="absolute w-full h-full backface-hidden flex items-center justify-center rotate-y-180">
-                <CardContent className="flex items-center justify-center h-full text-2xl font-bold p-4 text-center">
+                <CardContent className="flex items-center justify-center h-full text-4xl font-bold p-4 text-center">
                   {backContent}
                 </CardContent>
               </Card>
