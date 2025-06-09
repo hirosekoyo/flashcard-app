@@ -440,9 +440,9 @@ export default function TestPage() {
         </div>
         
         {studySettings.useSpacedRepetition ? (
-          <div className="flex justify-center gap-8">
-            <Button variant="destructive" size="lg" onClick={handleForget}>覚えてない</Button>
-            <Button variant="default" size="lg" onClick={handleRemember}>覚えた</Button>
+          <div className="flex justify-between w-full max-w-md mx-auto">
+            <Button variant="destructive" size="lg" className="w-[45%]" onClick={handleForget}>覚えてない</Button>
+            <Button variant="default" size="lg" className="w-[45%]" onClick={handleRemember}>覚えた</Button>
           </div>
         ) : (
           <div className="flex justify-center">
