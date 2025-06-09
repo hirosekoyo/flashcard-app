@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { useSwipeable } from 'react-swipeable'
 
 interface Word {
   word_id: string;
@@ -53,6 +54,21 @@ export default function TestPage() {
   const [todayReviewWordsCount, setTodayReviewWordsCount] = useState(0);
   
   const [unsavedChanges, setUnsavedChanges] = useState<Record<string, ProgressUpdate>>({});
+
+  const swipeHandlers = useSwipeable({
+    onSwipedLeft: () => {
+      if (studySettings.useSpacedRepetition) {
+        handleForget();
+      }
+    },
+    onSwipedRight: () => {
+      if (studySettings.useSpacedRepetition) {
+        handleRemember();
+      }
+    },
+    preventScrollOnSwipe: true,
+    trackMouse: true
+  });
 
   useEffect(() => {
     const idsQuery = searchParams.get('ids')
@@ -249,7 +265,6 @@ export default function TestPage() {
     const nextReview = getNextReviewDate(newLevel);
 
     setProgresses((prev) => ({ ...prev, [word.word_id]: newLevel }));
-    // setMistake(...) の呼び出しは削除
 
     const isLastCard = currentIndex === words.length - 1;
 
@@ -259,7 +274,7 @@ export default function TestPage() {
         wordbook_id: word.wordbook_id,
         level: newLevel,
         next_review_at: nextReview,
-        mistake_count: word.mistake_count, // 既存の間違い回数を維持
+        mistake_count: word.mistake_count,
       };
       
       setUnsavedChanges(prev => ({
@@ -280,7 +295,6 @@ export default function TestPage() {
     const word = words[currentIndex];
     
     setProgresses((prev) => ({ ...prev, [word.word_id]: 0 }));
-    // setMistake(...) の呼び出しは削除
 
     const isLastCard = currentIndex === words.length - 1;
 
@@ -290,7 +304,7 @@ export default function TestPage() {
         wordbook_id: word.wordbook_id,
         level: 0,
         next_review_at: null, 
-        mistake_count: (word.mistake_count ?? 0) + 1, // 既存の間違い回数をインクリメント
+        mistake_count: (word.mistake_count ?? 0) + 1,
       };
 
       setUnsavedChanges(prev => ({
@@ -423,6 +437,7 @@ export default function TestPage() {
             key={currentWord.word_id}  
             className={`relative w-full h-[calc(100vh-300px)] cursor-pointer perspective`}
             onClick={() => setIsFlipped(f => !f)}
+            {...swipeHandlers}
           >
             <div className={`absolute w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${isFlipped ? 'rotate-y-180' : ''}`}>
               <Card className="absolute w-full h-full backface-hidden flex items-center justify-center">
