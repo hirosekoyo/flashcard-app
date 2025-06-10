@@ -38,6 +38,7 @@ interface EditableWord {
   front: string;
   back: string;
   level?: number;
+  isSelected?: boolean; // チェックボックス用のフラグを追加
 }
 
 export default function WordbookDetailPage() {
@@ -48,7 +49,6 @@ export default function WordbookDetailPage() {
 
   // ひろせ　ゲスト変数を共通するのと毎回ユーザーデータを取得するのでなく、格納したい。
   //今日のノルマを中央よせもう少し大きく
-  //覚えた、覚えてないボタンを左右半分の大きさ
   //覚えた、覚えてないアニメーション、スワイプ、
   const GUEST_EMAIL = 'guest@geust.com';
 
@@ -127,10 +127,10 @@ export default function WordbookDetailPage() {
   useEffect(() => {
     if (isNew) {
       setEditTitle('');
-      setEditWords([{ front: '', back: '', level: 0 }]);
+      setEditWords([{ front: '', back: '', level: 0, isSelected: false }]);
     } else {
       if (wordbook) setEditTitle(wordbook.title);
-      setEditWords(words.map(w => ({ id: w.id, front: w.front, back: w.back, level: w.level })));
+      setEditWords(words.map(w => ({ id: w.id, front: w.front, back: w.back, level: w.level, isSelected: false })));
     }
   }, [wordbook, words, isNew])
 
@@ -138,16 +138,21 @@ export default function WordbookDetailPage() {
     setEditWords((prev) => prev.map((w, i) => i === idx ? { ...w, [key]: value } : w))
   }
 
-  const handleAddWord = () => setEditWords((prev) => [...prev, { front: '', back: '', level: 0 }])
+  const handleAddWord = () => setEditWords((prev) => [...prev, { front: '', back: '', level: 0, isSelected: false }])
 
-  const handleRemoveWord = (idx: number) => {
-    const wordToRemove = editWords[idx];
-    if (wordToRemove.id) {
-      setDeletedWordIds((prev) => [...prev, wordToRemove.id!]);
-    }
-    setEditWords((prev) => prev.filter((_, i) => i !== idx));
+  const handleRemoveSelectedWords = () => {
+    const selectedWords = editWords.filter(w => w.isSelected);
+    selectedWords.forEach(word => {
+      if (word.id) {
+        setDeletedWordIds((prev) => [...prev, word.id!]);
+      }
+    });
+    setEditWords((prev) => prev.filter(w => !w.isSelected));
   };
 
+  const handleWordSelection = (idx: number, checked: boolean) => {
+    setEditWords((prev) => prev.map((w, i) => i === idx ? { ...w, isSelected: checked } : w));
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -294,7 +299,7 @@ export default function WordbookDetailPage() {
       const front = parts[0]?.trim() || '';
       const back = parts[1]?.trim() || '';
       if (front || back) {
-        newWordPairs.push({ front, back, level: 0 });
+        newWordPairs.push({ front, back, level: 0, isSelected: false });
       }
     });
     addUniqueWords(newWordPairs);
@@ -313,12 +318,12 @@ export default function WordbookDetailPage() {
         const lines = text.split(/\r\n|\r|\n/);
         const newWordPairs: EditableWord[] = [];
         lines.forEach(line => {
-          if(line.trim() === '') return;
+          if (line.trim() === '') return;
           const parts = line.split(','); // CSVなのでカンマ区切りで固定
           const front = parts[0]?.trim() || '';
           const back = parts[1]?.trim() || '';
           if (front || back) {
-            newWordPairs.push({ front, back, level: 0 });
+            newWordPairs.push({ front, back, level: 0, isSelected: false });
           }
         });
         addUniqueWords(newWordPairs);
@@ -438,17 +443,24 @@ export default function WordbookDetailPage() {
                     value={word.back}
                     onChange={e => handleWordChange(idx, 'back', e.target.value)}
                   />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => handleRemoveWord(idx)}
-                  >
-                    削除
-                  </Button>
+                  <Checkbox
+                    checked={word.isSelected || false}
+                    onCheckedChange={(checked) => handleWordSelection(idx, checked as boolean)}
+                    className="h-4 w-4"
+                  />
                 </div>
               ))}
-              <Button type="button" variant="secondary" size="sm" onClick={handleAddWord}>単語を追加</Button>
+              <div className="flex justify-between items-center">
+                <Button type="button" variant="secondary" size="sm" onClick={handleAddWord}>単語を追加</Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleRemoveSelectedWords}
+                >
+                  選択項目を削除
+                </Button>
+              </div>
             </div>
           </div>
 
