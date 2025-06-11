@@ -424,30 +424,46 @@ export default function WordbookDetailPage() {
             <label className="block text-sm font-medium text-gray-700 mb-2">単語リスト {isNew ? '' : '(学習レベル順)'}</label>
             <div className="space-y-2">
               {editWords.map((word, idx) => (
-                <div key={word.id || `new-${idx}`} className="flex gap-2 items-center">
-                  {!isNew && (
-                    <span className="text-xs text-gray-600 min-w-[3rem] text-right pr-2">
-                      Lv: {word.level ?? 'N/A'}
-                    </span>
+                <div key={word.id || `new-${idx}`} className="flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-center justify-center w-12">
+                      {!isNew && (
+                        <span className="text-xs text-gray-600">
+                          Lv: {word.level ?? 'N/A'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <Input
+                        type="text"
+                        placeholder="表"
+                        value={word.front}
+                        onChange={e => handleWordChange(idx, 'front', e.target.value)}
+                      />
+                    </div>
+                    <div className="flex items-center justify-center w-4">
+                      <Checkbox
+                        checked={word.isSelected || false}
+                        onCheckedChange={(checked) => handleWordSelection(idx, checked as boolean)}
+                        className="h-4 w-4 flex-shrink-0"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-12"></div>
+                    <div className="flex-1">
+                      <Input
+                        type="text"
+                        placeholder="裏"
+                        value={word.back}
+                        onChange={e => handleWordChange(idx, 'back', e.target.value)}
+                      />
+                    </div>
+                    <div className="w-4"></div>
+                  </div>
+                  {idx < editWords.length - 1 && (
+                    <div className="border-b border-gray-200 my-2"></div>
                   )}
-                  {isNew && <div className="min-w-[3rem]"></div>}
-                  <Input
-                    type="text"
-                    placeholder="表"
-                    value={word.front}
-                    onChange={e => handleWordChange(idx, 'front', e.target.value)}
-                  />
-                  <Input
-                    type="text"
-                    placeholder="裏"
-                    value={word.back}
-                    onChange={e => handleWordChange(idx, 'back', e.target.value)}
-                  />
-                  <Checkbox
-                    checked={word.isSelected || false}
-                    onCheckedChange={(checked) => handleWordSelection(idx, checked as boolean)}
-                    className="h-4 w-4"
-                  />
                 </div>
               ))}
               <div className="flex justify-between items-center">
