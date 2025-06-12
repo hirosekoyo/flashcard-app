@@ -55,20 +55,6 @@ export default function TestPage() {
   
   const [unsavedChanges, setUnsavedChanges] = useState<Record<string, ProgressUpdate>>({});
 
-  const swipeHandlers = useSwipeable({
-    onSwipedLeft: () => {
-      if (studySettings.useSpacedRepetition) {
-        handleForget();
-      }
-    },
-    onSwipedRight: () => {
-      if (studySettings.useSpacedRepetition) {
-        handleRemember();
-      }
-    },
-    preventScrollOnSwipe: true,
-    trackMouse: true
-  });
 
   useEffect(() => {
     const idsQuery = searchParams.get('ids')
@@ -396,25 +382,30 @@ export default function TestPage() {
       <div className="max-w-3xl mx-auto"> {/* 全体のコンテンツラッパー */}
         {/* 進捗表示と終了ボタンのコンテナ */}
         <div className="w-80 mx-auto flex justify-between items-center mb-4"> {/* カード幅(w-80)に合わせて中央寄せ */}
-          <p className="text-sm text-gray-500">
+          <div className="h-[80px] flex flex-col justify-center"> {/* 高さを固定 */}
             {studySettings.useSpacedRepetition && todayReviewWordsCount > 0 ? (
               <>
                 {currentIndex + 1 > todayReviewWordsCount && todayReviewWordsCount > 0 ? (
-                  <span className="text-base font-bold text-green-600">ノルマ達成！</span>
+                  <div className="h-[60px] flex flex-col justify-center"> {/* ノルマ達成時の表示を中央寄せ */}
+                    <span className="text-base font-bold text-green-600">ノルマ達成！</span>
+                    <span className="text-sm text-gray-500 mt-1">{currentIndex + 1} / {words.length}</span>
+                  </div>
                 ) : (
-                  <>
+                  <div className="text-sm text-gray-500">
                     <span>今日のノルマ: <span className="text-xl font-bold text-blue-600">{todayReviewWordsCount}</span>枚</span>
                     <br />
                     <span>学習レベル: <span className="text-xl font-bold text-blue-600">{progresses[currentWord.word_id] ?? currentWord.level}</span></span>
-                  </>
+                    <br />
+                    <span>{currentIndex + 1} / {words.length}</span>
+                  </div>
                 )}
-                <br />
-                {currentIndex + 1} / {words.length}
               </>
             ) : (
-              <>{currentIndex + 1} / {words.length}</>
+              <div className="text-sm text-gray-500">
+                {currentIndex + 1} / {words.length}
+              </div>
             )}
-          </p>
+          </div>
           <div>
             {studySettings.useSpacedRepetition ? (
               <Button onClick={() => handleSaveAndExit()} size="sm" variant="outline">
@@ -437,7 +428,6 @@ export default function TestPage() {
             key={currentWord.word_id}  
             className={`relative w-full h-[calc(100vh-300px)] cursor-pointer perspective`}
             onClick={() => setIsFlipped(f => !f)}
-            {...swipeHandlers}
           >
             <div className={`absolute w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${isFlipped ? 'rotate-y-180' : ''}`}>
               <Card className="absolute w-full h-full backface-hidden flex items-center justify-center">

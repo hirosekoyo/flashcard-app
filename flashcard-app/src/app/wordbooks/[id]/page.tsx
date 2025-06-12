@@ -49,7 +49,9 @@ export default function WordbookDetailPage() {
 
   // ひろせ　ゲスト変数を共通するのと毎回ユーザーデータを取得するのでなく、格納したい。
   //今日のノルマを中央よせもう少し大きく
-  //覚えた、覚えてないアニメーション、スワイプ、
+  //覚えた、覚えてないアニメーション、スワイプはなしでもいいか
+  //新規登録時のメール送信なくす
+  //単語制限
   const GUEST_EMAIL = 'guest@geust.com';
 
   const [wordbook, setWordbook] = useState<Wordbook | null>(null)
