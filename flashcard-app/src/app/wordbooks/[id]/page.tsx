@@ -52,6 +52,7 @@ export default function WordbookDetailPage() {
   //覚えた、覚えてないアニメーション、スワイプはなしでもいいか
   //新規登録時のメール送信なくす
   //単語制限
+  //トグルswitchやチェックボックスのサイズを大きくする、switch切り替えの応答をつける？
   const GUEST_EMAIL = 'guest@geust.com';
 
   const [wordbook, setWordbook] = useState<Wordbook | null>(null)
