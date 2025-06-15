@@ -49,10 +49,11 @@ export default function WordbookDetailPage() {
 
   // ひろせ　ゲスト変数を共通するのと毎回ユーザーデータを取得するのでなく、格納したい。
   //今日のノルマを中央よせもう少し大きく
-  //覚えた、覚えてないアニメーション、スワイプはなしでもいいか
+  //覚えた、覚えてないアニメーション、スワイプ送りは、なしでもいいか
   //新規登録時のメール送信なくす
   //単語制限
   //トグルswitchやチェックボックスのサイズを大きくする、switch切り替えの応答をつける？
+  //pwa改善　https://tech.bitbank.cc/native-mobile-app-with-web-frontend/
   const GUEST_EMAIL = 'guest@geust.com';
 
   const [wordbook, setWordbook] = useState<Wordbook | null>(null)
@@ -448,7 +449,7 @@ export default function WordbookDetailPage() {
                       <Checkbox
                         checked={word.isSelected || false}
                         onCheckedChange={(checked) => handleWordSelection(idx, checked as boolean)}
-                        className="h-4 w-4 flex-shrink-0"
+                        className="h-6 w-6 flex-shrink-0"
                       />
                     </div>
                   </div>

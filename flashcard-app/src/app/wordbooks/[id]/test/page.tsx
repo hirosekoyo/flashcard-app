@@ -36,8 +36,7 @@ export default function TestPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-    // ゲストユーザーのメールアドレスを定義 
-  // ひろせ　ゲスト変数を共通するのと毎回ユーザーデータを取得するのでなく、格納したい。
+  // ゲストユーザーのメールアドレスを定義 
   const GUEST_EMAIL = 'guest@geust.com';
 
   const [words, setWords] = useState<Word[]>([])

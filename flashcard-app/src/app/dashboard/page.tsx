@@ -231,7 +231,7 @@ export default function DashboardPage() {
                             id={`wordbook-${wordbook.id}`}
                             checked={!!selectedWordbooks[wordbook.id]} // ここが重要：selectedWordbooksの状態と同期させる
                             onChange={() => toggleWordbook(wordbook.id)}
-                            className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                            className="h-6 w-6 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                           />
                           <div className="ml-3 block">
                             <span className="text-sm font-medium text-gray-900">{wordbook.title}</span>
@@ -258,14 +258,14 @@ export default function DashboardPage() {
                     <span className="text-sm font-medium text-gray-900">表から表示する</span>
                     <p className="text-sm text-gray-500">表⇒裏の順番で表示します</p>
                   </div>
-                  <Switch checked={studySettings.frontToBack} onCheckedChange={() => setStudySettings({ ...studySettings, frontToBack: !studySettings.frontToBack })} />
+                  <Switch checked={studySettings.frontToBack} onCheckedChange={() => setStudySettings({ ...studySettings, frontToBack: !studySettings.frontToBack })} className="scale-125" />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm font-medium text-gray-900">コツコツモード</span>
                     <p className="text-sm text-gray-500">忘却曲線に沿った、今日思い出すべき単語と覚えていない単語のみ出題します</p>
                   </div>
-                  <Switch checked={studySettings.useSpacedRepetition} onCheckedChange={() => setStudySettings({ ...studySettings, useSpacedRepetition: !studySettings.useSpacedRepetition })} />
+                  <Switch checked={studySettings.useSpacedRepetition} onCheckedChange={() => setStudySettings({ ...studySettings, useSpacedRepetition: !studySettings.useSpacedRepetition })} className="scale-125" />
                 </div>
               </CardContent>
             </Card>
