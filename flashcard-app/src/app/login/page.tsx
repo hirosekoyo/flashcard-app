@@ -111,9 +111,9 @@ function translateError(errorMessage: string): string {
           </div>
           <h1 className="mt-4 text-3xl font-bold tracking-tight text-gray-900 dark:text-white">コツコツ単語帳</h1>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-            今日思い出すべき単語とまだ覚えていない単語を自動で出題します。
-            学習記録を自動で保存して、思い出すべき単語は忘却曲線に沿った最適なタイミングで出題されます。
-            最低限の今日のノルマ＋αを毎日コツコツ学習すれば着実に記憶に定着していきます。
+            今日思い出すべき単語とまだ覚えていない単語だけを自動で出題するため、効率よく学習を進めることができます。
+            今日思い出すべき単語は忘却曲線に沿った最適なタイミングで出題されます。
+            今日のノルマ＋αをコツコツ学習すれば着実に記憶に定着していきます。
           </p>
         </div>
       </div>
