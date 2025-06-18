@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import Header from '@/components/Header'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 export default function HowToUsePage() {
   return (
@@ -47,8 +48,37 @@ export default function HowToUsePage() {
             <CardContent>
               <p className="text-foreground">今日思い出すべき単語は忘却曲線に沿って適切なタイミングで出題されます。今日思い出すべき単語のみ出題されるため、既に覚えている単語の学習時間を短縮できます。</p>
             </CardContent>
-            <CardContent>
-              <p className="text-foreground">忘却曲線と学習レベルの表を出す</p>
+            <CardContent className="flex flex-col items-center">
+              <div className="w-full max-w-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-center">学習レベル</TableHead>
+                      <TableHead className="text-center">次の復習までの日数</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {[
+                      { level: 0, days: "1日" },
+                      { level: 1, days: "2日" },
+                      { level: 2, days: "3日" },
+                      { level: 3, days: "5日" },
+                      { level: 4, days: "7日" },
+                      { level: 5, days: "14日" },
+                      { level: 6, days: "30日" },
+                      { level: 7, days: "90日" },
+                      { level: 8, days: "180日" },
+                      { level: 9, days: "180日" },
+                      { level: 10, days: "180日" }
+                    ].map(({ level, days }) => (
+                      <TableRow key={level}>
+                        <TableCell className="text-center">レベル {level}</TableCell>
+                        <TableCell className="text-center">{days}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
             <CardHeader>
               <CardDescription>なかなか覚えられない単語に触れる機会が多くなる</CardDescription>
