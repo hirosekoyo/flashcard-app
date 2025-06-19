@@ -52,7 +52,7 @@ export default function WordbookDetailPage() {
   //覚えた、覚えてないアニメーション、スワイプ送りは、なしでもいいか
   //新規登録時のメール送信なくす
   //単語制限
-  //トグルswitchやチェックボックスのサイズを大きくする、switch切り替えの触覚フィードバックをつける？
+  //トグルswitchやチェックボックスのサイズを大きくする、switch切り替えの触覚フィードバックをつける？バウンススクロール pwa
   //pwa改善　https://tech.bitbank.cc/native-mobile-app-with-web-frontend/
   const GUEST_EMAIL = 'guest@geust.com';
 

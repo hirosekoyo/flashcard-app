@@ -13,7 +13,6 @@ export default function HowToUsePage() {
           <Card className="bg-white">
             <CardHeader>
               <CardTitle className="text-primary">1. ログイン</CardTitle>
-              <CardDescription>アカウントにログインして学習を始めましょう</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-foreground">メールアドレスを登録してアカウントを作成すると、単語帳作成や忘却曲線に沿った単語テストができるようになります。</p>
@@ -23,7 +22,6 @@ export default function HowToUsePage() {
           <Card className="bg-white">
             <CardHeader>
               <CardTitle className="text-primary">2. 単語帳の作成</CardTitle>
-              <CardDescription>学習したい単語を登録しましょう</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-foreground">CSVファイルの取り込みや表計算ソフトからテキストをコピペして一括登録することもできます。PCからの作業がおすすめです。インポートするテキストはご自身で作成するのも良いですが、「高校3年生　英単語　CSV」で検索したり、「TOEIC600点を取得するために重要な単語を50個挙げて。英語、日本語訳の順番にカンマ区切りでお願い！」と生成AIに作成してもらうのもおすすめです。</p>
@@ -33,20 +31,18 @@ export default function HowToUsePage() {
           <Card className="bg-white">
             <CardHeader>
               <CardTitle className="text-primary">3. テスト</CardTitle>
-              <CardDescription>フラッシュカードで効率的に学習</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-foreground">作成した単語帳を選択し、「学習を開始」ボタンをクリックすると、フラッシュカード形式で学習を始めることができます。カードをタップすると意味が表示されます。基本的にはコツコツモードをオンにして、今日のノルマ＋αを目標にテストを行ってください。</p>
+              <p className="text-foreground">作成した単語帳を選択し、「学習を開始」ボタンをタップすると、フラッシュカード形式で学習を始めることができます。カードをタップすると裏面が表示されます。基本的にはコツコツモードをオンにして、今日のノルマ＋αを目標にテストを行ってください。</p>
             </CardContent>
           </Card>
 
           <Card className="bg-white">
             <CardHeader>
               <CardTitle className="text-primary">4. アプリの特徴</CardTitle>
-              <CardDescription>効率よく学習できる機能</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-foreground">今日思い出すべき単語は忘却曲線に沿って適切なタイミングで出題されます。今日思い出すべき単語のみ出題されるため、既に覚えている単語の学習時間を短縮できます。</p>
+              <p className="text-foreground">今日思い出すべき単語は忘却曲線に沿って最適なタイミングで出題されます。今日思い出すべき単語のみ出題されるため、既に覚えている単語の学習時間を短縮できます。</p>
             </CardContent>
             <CardContent className="flex flex-col items-center">
               <div className="w-full max-w-md">
@@ -81,7 +77,6 @@ export default function HowToUsePage() {
               </div>
             </CardContent>
             <CardHeader>
-              <CardDescription>なかなか覚えられない単語に触れる機会が多くなる</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-foreground">覚えていない単語は、学習レベルがリセットされ間違えた回数も記録します。テストでは今日のノルマ単語の後に、間違えた回数の多い単語から出題されるため、なかなか覚えられない単語に触れる機会が自動的に多くなります。</p>

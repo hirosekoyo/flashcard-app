@@ -58,8 +58,38 @@
     -webkit-tap-highlight-color: transparent;
     user-select: none;
   }
+  
+  html {
+    /* バウンススクロールを無効にする */
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  
   body {
     @apply bg-background text-foreground;
+    /* バウンススクロールを無効にする */
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    /* スクロールバーを非表示にする */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  /* Webkitブラウザでスクロールバーを非表示 */
+  body::-webkit-scrollbar {
+    display: none;
+  }
+  
+  /* スクロール可能な要素でもバウンススクロールを無効にする */
+  .scroll-container {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  
+  .scroll-container::-webkit-scrollbar {
+    display: none;
   }
 }
 
