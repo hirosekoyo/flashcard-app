@@ -54,6 +54,9 @@ export default function TestPage() {
   
   const [unsavedChanges, setUnsavedChanges] = useState<Record<string, ProgressUpdate>>({});
 
+  // スライドアニメーション用のstate
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null)
+  const [isSliding, setIsSliding] = useState(false)
 
   useEffect(() => {
     const idsQuery = searchParams.get('ids')
@@ -242,7 +245,7 @@ export default function TestPage() {
   };
 
   const handleRemember = async () => {
-    if (words.length === 0) return;
+    if (words.length === 0 || isSliding) return;
     const word = words[currentIndex];
 
     const currentProgressLevel = progresses[word.word_id] ?? word.level;
@@ -272,11 +275,21 @@ export default function TestPage() {
         return; 
       }
     }
-    goNext();
+
+    // 右側にスライドアニメーション
+    setSlideDirection('right');
+    setIsSliding(true);
+    
+    setTimeout(() => {
+      setSlideDirection(null);
+      setIsSliding(false);
+      setIsFlipped(false);
+      goNext();
+    }, 300);
   };
 
   const handleForget = async () => {
-    if (words.length === 0) return;
+    if (words.length === 0 || isSliding) return;
     const word = words[currentIndex];
     
     setProgresses((prev) => ({ ...prev, [word.word_id]: 0 }));
@@ -302,7 +315,17 @@ export default function TestPage() {
         return;
       }
     }
-    goNext();
+
+    // 左側にスライドアニメーション
+    setSlideDirection('left');
+    setIsSliding(true);
+    
+    setTimeout(() => {
+      setSlideDirection(null);
+      setIsSliding(false);
+      setIsFlipped(false);
+      goNext();
+    }, 300);
   };
 
   const goNext = () => {
@@ -425,10 +448,15 @@ export default function TestPage() {
         <div className="flex justify-center mb-8">
           <div
             key={currentWord.word_id}  
-            className={`relative w-full h-[calc(100vh-300px)] cursor-pointer perspective`}
+            className={`relative w-full h-[calc(100vh-300px)] cursor-pointer perspective overflow-hidden`}
             onClick={() => setIsFlipped(f => !f)}
           >
-            <div className={`absolute w-full h-full transition-transform duration-500 [transform-style:preserve-3d] ${isFlipped ? 'rotate-y-180' : ''}`}>
+            <div className={`absolute w-full h-full transition-all duration-300 [transform-style:preserve-3d] ${
+              isFlipped ? 'rotate-y-180' : ''
+            } ${
+              slideDirection === 'right' ? (isFlipped ? 'slide-left' : 'slide-right') : 
+              slideDirection === 'left' ? (isFlipped ? 'slide-right' : 'slide-left') : ''
+            }`}>
               <Card className="absolute w-full h-full backface-hidden flex items-center justify-center">
                 <CardContent className="flex items-center justify-center h-full text-4xl font-bold p-4 text-center">
                   {frontContent}
@@ -445,8 +473,24 @@ export default function TestPage() {
         
         {studySettings.useSpacedRepetition ? (
           <div className="flex justify-between w-full max-w-md mx-auto">
-            <Button variant="destructive" size="lg" className="w-[45%]" onClick={handleForget}>覚えてない</Button>
-            <Button variant="default" size="lg" className="w-[45%]" onClick={handleRemember}>覚えた</Button>
+            <Button 
+              variant="destructive" 
+              size="lg" 
+              className="w-[45%]" 
+              onClick={handleForget}
+              disabled={isSliding}
+            >
+              覚えてない
+            </Button>
+            <Button 
+              variant="default" 
+              size="lg" 
+              className="w-[45%]" 
+              onClick={handleRemember}
+              disabled={isSliding}
+            >
+              覚えた
+            </Button>
           </div>
         ) : (
           <div className="flex justify-center">
@@ -465,6 +509,18 @@ export default function TestPage() {
         }
         .rotate-y-180 {
           transform: rotateY(180deg);
+        }
+        .slide-right {
+          transform: translateX(100%);
+        }
+        .slide-left {
+          transform: translateX(-100%);
+        }
+        .rotate-y-180.slide-right {
+          transform: rotateY(180deg) translateX(100%);
+        }
+        .rotate-y-180.slide-left {
+          transform: rotateY(180deg) translateX(-100%);
         }
       `}</style>
     </div>

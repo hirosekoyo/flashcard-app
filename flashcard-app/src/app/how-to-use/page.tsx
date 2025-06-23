@@ -86,10 +86,9 @@ export default function HowToUsePage() {
           <Card className="bg-white">
             <CardHeader>
               <CardTitle className="text-primary">5. 開発者への支援</CardTitle>
-              <CardDescription>学習を自分流にカスタマイズ</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-foreground">このアプリが良いと思って頂けたら、家族・友人・知人へのご紹介や、SNSで共有して頂けると開発者が喜びます。また、ご意見・お問い合わせ・Amazonギフト券の寄付をメールアドレスにて承っております。利用者様の直接の声がサービスの継続や拡大のモチベーションになりますので、何卒よろしくお願いします。</p>
+              <p className="text-foreground">このアプリが良いと思って頂けたら、家族・友人・知人へのご紹介や、SNSで共有して頂けると開発者が喜びます。また、ご意見・お問い合わせ・Amazonギフト券での寄付をメールアドレスにて承っております。利用者様の直接の声がサービスの継続や拡大の励みになりますので、何卒よろしくお願いします。</p>
             </CardContent>
           </Card>
         </div>

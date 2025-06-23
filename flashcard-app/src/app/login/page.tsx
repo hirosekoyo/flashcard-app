@@ -131,10 +131,10 @@ function translateError(errorMessage: string): string {
           {/* space-y-6で入力欄の間隔を調整 */}
           <form className="space-y-6" onSubmit={handleSubmit}>
             {/* --- メールアドレス入力 (モダンデザイン) --- */}
-            <div className="relative group">
+            <div className="space-y-2">
               <Label
                 htmlFor="email"
-                className="absolute left-3 -top-2.5 bg-white px-1 text-xs font-medium text-gray-600 transition-all group-focus-within:text-indigo-600 group-focus-within:font-medium dark:bg-card dark:text-gray-400 dark:group-focus-within:text-indigo-400"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300"
               >
                 メールアドレス
               </Label>
@@ -154,10 +154,10 @@ function translateError(errorMessage: string): string {
             </div>
 
             {/* --- パスワード入力 (モダンデザイン) --- */}
-            <div className="relative group">
+            <div className="space-y-2">
               <Label
                 htmlFor="password"
-                className="absolute left-3 -top-2.5 bg-white px-1 text-xs font-medium text-gray-600 transition-all group-focus-within:text-indigo-600 group-focus-within:font-medium dark:bg-card dark:text-gray-400 dark:group-focus-within:text-indigo-400"
+                className="text-sm font-medium text-gray-700 dark:text-gray-300"
               >
                 パスワード
               </Label>
