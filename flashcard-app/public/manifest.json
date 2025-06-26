@@ -1,6 +1,6 @@
 {
   "name": "コツコツ単語帳",
-  "short_name": "単語帳",
+  "short_name": "52",
   "description": "効率的な単語学習をサポートするPWAアプリ",
   "start_url": "/",
   "display": "standalone",
