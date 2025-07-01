@@ -54,7 +54,6 @@ export default function WordbookDetailPage() {
   //単語制限
   //トグルswitchやチェックボックスのサイズを大きくする、switch切り替えの触覚フィードバックをつける？バウンススクロール pwa
   //pwa改善　https://tech.bitbank.cc/native-mobile-app-with-web-frontend/
-  const GUEST_EMAIL = 'guest@geust.com';
 
   const [wordbook, setWordbook] = useState<Wordbook | null>(null)
   const [words, setWords] = useState<Word[]>([]) // DBの元データ
@@ -98,26 +97,39 @@ export default function WordbookDetailPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error("ユーザーがログインしていません。")
 
-      const { data, error } = await supabase
+      // wordsテーブルから直接単語を取得
+      const { data: wordsData, error: wordsError } = await supabase
+        .from('words')
+        .select('id, front, back')
+        .eq('wordbook_id', params.id)
+        .order('created_at', { ascending: true })
+
+      if (wordsError) throw wordsError
+
+      // learning_progressテーブルからレベル情報を取得
+      const { data: progressData, error: progressError } = await supabase
         .from('learning_progress')
-        .select(`word_id, level, words!inner(id, wordbook_id, front, back)`)
+        .select('word_id, level')
         .eq('user_id', user.id)
-        .eq('words.wordbook_id', params.id)
-        .order('level', { ascending: false })
+        .eq('wordbook_id', params.id)
 
-      if (error) throw error
+      if (progressError) throw progressError
 
-      const transformedWords: Word[] = data?.map((item: any) => ({
-        id: item.words.id,
-        front: item.words.front || '',
-        back: item.words.back || '',
-        level: item.level,
-      })) || []
+      // レベル情報をマップ化
+      const levelMap = new Map(progressData?.map(p => [p.word_id, p.level]) || [])
+
+      // 単語データとレベル情報を結合
+      const transformedWords: Word[] = (wordsData || []).map(word => ({
+        id: word.id,
+        front: word.front || '',
+        back: word.back || '',
+        level: levelMap.get(word.id) || 0,
+      }))
 
       setWords(transformedWords)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching words:', error)
-      setError(error.message || '単語の取得に失敗しました')
+      setError(error instanceof Error ? error.message : '単語の取得に失敗しました')
     } finally {
       setLoading(false)
     }
@@ -134,7 +146,11 @@ export default function WordbookDetailPage() {
       setEditWords([{ front: '', back: '', level: 0, isSelected: false }]);
     } else {
       if (wordbook) setEditTitle(wordbook.title);
-      setEditWords(words.map(w => ({ id: w.id, front: w.front, back: w.back, level: w.level, isSelected: false })));
+      // レベル順（高い順）にソートしてから設定
+      const sortedWords = words
+        .map(w => ({ id: w.id, front: w.front, back: w.back, level: w.level, isSelected: false }))
+        .sort((a, b) => (b.level || 0) - (a.level || 0));
+      setEditWords(sortedWords);
     }
   }, [wordbook, words, isNew])
 
@@ -266,8 +282,8 @@ export default function WordbookDetailPage() {
         setTimeout(() => setSaveSuccess(false), 2000);
       }
 
-    } catch (error: any) {
-      setError(error.message || '保存に失敗しました');
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : '保存に失敗しました');
     } finally {
       setSaving(false);
     }
@@ -352,7 +368,7 @@ export default function WordbookDetailPage() {
       await supabase.from('words').delete().eq('wordbook_id', params.id);
       await supabase.from('wordbooks').delete().eq('id', params.id);
       router.push('/dashboard');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting wordbook:', error);
       setError('単語帳の削除に失敗しました');
     } finally {

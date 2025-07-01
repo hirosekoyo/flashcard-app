@@ -20,7 +20,6 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'wordbooks' | 'study'>('wordbooks')
   const [selectedWordbooks, setSelectedWordbooks] = useState<Record<string, boolean>>({})
-  const [showSettings, setShowSettings] = useState(false)
   const [studySettings, setStudySettings] = useState({
     frontToBack: true,
     useSpacedRepetition: true
@@ -104,7 +103,7 @@ export default function DashboardPage() {
 
   const startStudy = () => {
     const selectedIds = Object.entries(selectedWordbooks)
-      .filter(([_, isSelected]) => isSelected)
+      .filter(([, isSelected]) => isSelected)
       .map(([id]) => id);
 
     // 選択された単語帳が0個の場合は学習を開始しない

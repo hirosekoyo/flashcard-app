@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState, startTransition } from 'react'
+import { useEffect, useState, startTransition, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { useSwipeable } from 'react-swipeable'
+
 
 interface Word {
   word_id: string;
@@ -85,7 +85,7 @@ export default function TestPage() {
     return getFormattedDate(today);
   };
 
-  const fetchTestData = async (wordbookIdsParam: string[]) => {
+  const fetchTestData = useCallback(async (wordbookIdsParam: string[]) => {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -96,65 +96,97 @@ export default function TestPage() {
         return;  
       }
       
-      let query = supabase
-        .from('learning_progress')
-        .select(`
-          word_id,
-          level,
-          mistake_count,
-          next_review_at,
-          wordbook_id,
-          words!inner(front, back)
-        `)
-        .in('wordbook_id', wordbookIdsParam);  
+      // wordsテーブルから直接単語を取得
+      const { data: wordsData, error: wordsError } = await supabase
+        .from('words')
+        .select('id, front, back, wordbook_id')
+        .in('wordbook_id', wordbookIdsParam)
+        .order('created_at', { ascending: true });
 
+      if (wordsError) {
+        console.error('Error fetching words:', wordsError);
+        setWords([]);
+        setLoading(false);
+        return;
+      }
+
+      if (!wordsData || wordsData.length === 0) {
+        setWords([]);
+        setLoading(false);
+        return;
+      }
+
+      // learning_progressテーブルから学習進捗を取得
+      const { data: progressData, error: progressError } = await supabase
+        .from('learning_progress')
+        .select('word_id, level, mistake_count, next_review_at, wordbook_id')
+        .eq('user_id', user.id)
+        .in('wordbook_id', wordbookIdsParam);
+
+      if (progressError) {
+        console.error('Error fetching progress:', progressError);
+        // 進捗データが取得できなくても単語は表示する
+      }
+
+      // 進捗データをマップ化
+      const progressMap = new Map();
+      progressData?.forEach(progress => {
+        progressMap.set(progress.word_id, progress);
+      });
+
+      // 単語データと進捗データを結合
+      let transformedWords: Word[] = wordsData.map(word => {
+        const progress = progressMap.get(word.id);
+        return {
+          word_id: word.id,
+          level: progress?.level || 0,
+          mistake_count: progress?.mistake_count || 0,
+          next_review_at: progress?.next_review_at || null,
+          wordbook_id: word.wordbook_id,
+          words: {
+            front: word.front || '',
+            back: word.back || ''
+          }
+        };
+      });
+
+      // コツコツモードの場合は今日復習すべき単語のみをフィルタリング
       if (studySettings.useSpacedRepetition) {
         const todayDateString = getTodayDateString();
+        transformedWords = transformedWords.filter(word => 
+          word.next_review_at === null || word.next_review_at <= todayDateString
+        );
         
-        query = query
-          .or(`next_review_at.lte.${todayDateString},next_review_at.is.null`)
-          .order('next_review_at', { ascending: true })  
-          .order('mistake_count', { ascending: false });  
-      }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('Error fetching test data:', error);
-        setWords([]);
-      } else if (data) {
-        let transformedWords: Word[] = data.map((item: any) => ({
-          word_id: item.word_id,
-          level: item.level,
-          mistake_count: item.mistake_count,
-          next_review_at: item.next_review_at,
-          wordbook_id: item.wordbook_id,
-          words: {  
-            front: item.words?.front || '',  
-            back: item.words?.back || ''    
+        // 復習日順（期限切れ順）、間違えた回数順（多い順）でソート
+        transformedWords.sort((a, b) => {
+          // 第一優先: next_review_atが早い順（期限切れが最優先、nullは最後）
+          if (a.next_review_at !== b.next_review_at) {
+            if (a.next_review_at === null) return 1;  // nullは最後（まだ学習していない）
+            if (b.next_review_at === null) return -1; // nullは最後（まだ学習していない）
+            return a.next_review_at.localeCompare(b.next_review_at); // 早い日付が先
           }
-        }));
-        
-        if (!studySettings.useSpacedRepetition) {
-          transformedWords = transformedWords.sort(() => Math.random() - 0.5);
-        } else {
-          const todayStr = getTodayDateString();
-          const count = transformedWords.filter(word => 
-            word.next_review_at !== null && word.next_review_at <= todayStr
-          ).length;
-          setTodayReviewWordsCount(count);
-        }
-        setWords(transformedWords);  
+          // 第二優先: mistake_countが多い順
+          return (b.mistake_count || 0) - (a.mistake_count || 0);
+        });
+
+        const todayStr = getTodayDateString();
+        const count = transformedWords.filter(word => 
+          word.next_review_at !== null && word.next_review_at <= todayStr
+        ).length;
+        setTodayReviewWordsCount(count);
       } else {
-        setWords([]);
+        // ランダムモードの場合はランダムにソート
+        transformedWords = transformedWords.sort(() => Math.random() - 0.5);
       }
+
+      setWords(transformedWords);
     } catch (error) {
       console.error('Catch Error fetching test data:', error);
       setWords([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [studySettings.useSpacedRepetition]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -208,7 +240,7 @@ export default function TestPage() {
       return;
     }
 
-    let changesToProcess = { ...unsavedChanges }; 
+    const changesToProcess = { ...unsavedChanges }; 
 
     if (finalChange) {
       changesToProcess[finalChange.word_id] = finalChange;

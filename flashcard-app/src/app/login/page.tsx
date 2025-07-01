@@ -44,8 +44,8 @@ export default function LoginPage() {
         if (error) throw error
         router.push('/dashboard')
       }
-    } catch (error: any) {
-      setError(translateError(error.message))
+    } catch (error: unknown) {
+      setError(translateError(error instanceof Error ? error.message : 'Unknown error'))
     } finally {
       setLoading(false)
     }
@@ -90,8 +90,8 @@ function translateError(errorMessage: string): string {
       });
       if (error) throw error;
       router.push('/dashboard');
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
