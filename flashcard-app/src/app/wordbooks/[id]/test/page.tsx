@@ -186,7 +186,7 @@ export default function TestPage() {
     } finally {
       setLoading(false);
     }
-  }, [studySettings.useSpacedRepetition, getTodayDateString]);
+  }, [studySettings.useSpacedRepetition, getTodayDateString, router]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -204,7 +204,7 @@ export default function TestPage() {
         setWords([]);
         setLoading(false);
     }
-  }, [wordbookIds, studySettings.useSpacedRepetition]); 
+  }, [wordbookIds, studySettings.useSpacedRepetition, fetchTestData]); 
 
   const getNextReviewDate = (level: number): string => {
     const date = new Date();

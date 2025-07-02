@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -26,22 +26,7 @@ export default function DashboardPage() {
   })
   const router = useRouter()
 
-  useEffect(() => {
-    fetchWordbooks()
-  }, [])
-
-  // wordbooksが取得された後にselectedWordbooksを初期化する
-  useEffect(() => {
-    if (wordbooks.length > 0) {
-      const initialSelected = wordbooks.reduce((acc, wordbook) => {
-        acc[wordbook.id] = true; // すべての単語帳を初期値でチェック済みにする
-        return acc;
-      }, {} as Record<string, boolean>);
-      setSelectedWordbooks(initialSelected);
-    }
-  }, [wordbooks]); // wordbooksが変更されたときに実行
-
-  const fetchWordbooks = async () => {
+  const fetchWordbooks = useCallback(async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
@@ -87,7 +72,22 @@ export default function DashboardPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [router])
+
+  useEffect(() => {
+    fetchWordbooks()
+  }, [fetchWordbooks])
+
+  // wordbooksが取得された後にselectedWordbooksを初期化する
+  useEffect(() => {
+    if (wordbooks.length > 0) {
+      const initialSelected = wordbooks.reduce((acc, wordbook) => {
+        acc[wordbook.id] = true; // すべての単語帳を初期値でチェック済みにする
+        return acc;
+      }, {} as Record<string, boolean>);
+      setSelectedWordbooks(initialSelected);
+    }
+  }, [wordbooks]); // wordbooksが変更されたときに実行
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
@@ -223,22 +223,17 @@ export default function DashboardPage() {
                 ) : (
                   <div className="divide-y divide-gray-200">
                     {wordbooks.map((wordbook) => (
-                      <div key={wordbook.id} className="p-4">
-                        <label htmlFor={`wordbook-${wordbook.id}`} className="flex items-center cursor-pointer w-full">
-                          <input
-                            type="checkbox"
-                            id={`wordbook-${wordbook.id}`}
-                            checked={!!selectedWordbooks[wordbook.id]} // ここが重要：selectedWordbooksの状態と同期させる
-                            onChange={() => toggleWordbook(wordbook.id)}
-                            className="h-6 w-6 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                      <div key={wordbook.id} className="flex items-center justify-between py-4">
+                        <div className="flex items-center space-x-3">
+                          <Switch
+                            checked={selectedWordbooks[wordbook.id] || false}
+                            onCheckedChange={() => toggleWordbook(wordbook.id)}
                           />
-                          <div className="ml-3 block">
-                            <span className="text-sm font-medium text-gray-900">{wordbook.title}</span>
-                            <span className="text-sm text-gray-500 block">
-                              {wordbook.card_count}枚のカード
-                            </span>
+                          <div>
+                            <h3 className="text-sm font-medium text-gray-900">{wordbook.title}</h3>
+                            <p className="text-sm text-gray-500">{wordbook.card_count}枚のカード</p>
                           </div>
-                        </label>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -254,54 +249,38 @@ export default function DashboardPage() {
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-sm font-medium text-gray-900">表から表示する</span>
-                    <p className="text-sm text-gray-500">表⇒裏の順番で表示します</p>
+                    <h3 className="text-sm font-medium text-gray-900">表→裏の順序</h3>
+                    <p className="text-sm text-gray-500">単語→意味の順で出題</p>
                   </div>
-                  <Switch checked={studySettings.frontToBack} onCheckedChange={() => setStudySettings({ ...studySettings, frontToBack: !studySettings.frontToBack })} className="scale-125" />
+                  <Switch
+                    checked={studySettings.frontToBack}
+                    onCheckedChange={(checked) => setStudySettings(prev => ({ ...prev, frontToBack: checked }))}
+                  />
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-sm font-medium text-gray-900">コツコツモード</span>
-                    <p className="text-sm text-gray-500">今日思い出すべき単語と覚えていない単語のみ出題します</p>
+                    <h3 className="text-sm font-medium text-gray-900">間隔反復学習</h3>
+                    <p className="text-sm text-gray-500">間違えた単語を優先的に出題</p>
                   </div>
-                  <Switch checked={studySettings.useSpacedRepetition} onCheckedChange={() => setStudySettings({ ...studySettings, useSpacedRepetition: !studySettings.useSpacedRepetition })} className="scale-125" />
+                  <Switch
+                    checked={studySettings.useSpacedRepetition}
+                    onCheckedChange={(checked) => setStudySettings(prev => ({ ...prev, useSpacedRepetition: checked }))}
+                  />
                 </div>
               </CardContent>
             </Card>
 
             {/* 学習開始ボタン */}
-            <Button
+            <Button 
               onClick={startStudy}
-              disabled={Object.values(selectedWordbooks).filter(Boolean).length === 0} // 単語帳が1つも選択されていない場合に無効
-              className="w-full text-base"
+              className="w-full"
+              size="lg"
             >
-              学習を開始する
+              学習を開始
             </Button>
           </div>
         )}
       </main>
-
-      {/* フッター */}
-      {/* <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16">
-            <Button 
-              variant={activeTab === 'wordbooks' ? 'default' : 'ghost'} 
-              className="flex-1 rounded-none border-t-2 border-transparent hover:border-gray-300" 
-              onClick={() => setActiveTab('wordbooks')}
-            >
-              単語帳
-            </Button>
-            <Button 
-              variant={activeTab === 'study' ? 'default' : 'ghost'} 
-              className="flex-1 rounded-none border-t-2 border-transparent hover:border-gray-300" 
-              onClick={() => setActiveTab('study')}
-            >
-              テスト
-            </Button>
-          </div>
-        </div>
-      </footer> */}
     </div>
   )
 }
