@@ -80,10 +80,10 @@ export default function TestPage() {
     return `${year}-${month}-${day}`;
   };
 
-  const getTodayDateString = (): string => {
+  const getTodayDateString = useCallback((): string => {
     const today = new Date();
     return getFormattedDate(today);
-  };
+  }, []);
 
   const fetchTestData = useCallback(async (wordbookIdsParam: string[]) => {
     setLoading(true);
@@ -186,7 +186,7 @@ export default function TestPage() {
     } finally {
       setLoading(false);
     }
-  }, [studySettings.useSpacedRepetition]);
+  }, [studySettings.useSpacedRepetition, getTodayDateString]);
 
   useEffect(() => {
     const loadData = async () => {
